@@ -14,10 +14,11 @@ class SNat(BaseModule):
         'add': 'add_rule',
         'del': 'del_rule',
         'set': 'set_rule',
-        'search': 'get',
+        'search': 'search_rule',
+        'detail': 'get_rule',
         'toggle': 'toggle_rule',
     }
-    API_KEY_PATH = 'filter.snatrules.rule'
+    API_KEY_PATH = 'rule'
     API_MOD = 'firewall'
     API_CONT = 'source_nat'
     FIELDS_CHANGE = [
