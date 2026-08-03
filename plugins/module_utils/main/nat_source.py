@@ -63,6 +63,11 @@ class SNat(BaseModule):
                     "You need to provide an 'target' to create a source-nat rule!"
                 )
 
+        if not is_unset(self.p['protocol']):
+            # OPNsense stores/returns 'protocol' lowercase (model enforces 'ChangeCase: lower') -
+            # normalize here so diff-comparisons against the existing entry don't falsely report a change
+            self.p['protocol'] = self.p['protocol'].lower()
+
         self._build_log_name()
         self.find(match_fields=self.p['match_fields'])
 
