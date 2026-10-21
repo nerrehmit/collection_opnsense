@@ -131,3 +131,19 @@ def test_nat_source_any_protocol_stays_lowercase(mocker):
     snat.check()
 
     assert snat.p['protocol'] == 'any'
+
+
+def test_nat_source_skips_automatic_rules(mocker):
+    module = MockAnsibleModule()
+    module.params.update({'description': 'ANSIBLE_TEST_SNAT', 'match_fields': ['description']})
+    result = {'changed': False, 'diff': {'before': {}, 'after': {}}}
+    snat = SNat(module=module, result=result)
+
+    automatic = {
+        'uuid': 'automatic_wan', 'enabled': '1', 'sequence': '2', 'interface': 'wan',
+        'protocol': 'any', 'description': 'Auto created rule', 'is_automatic': True,
+    }
+    manual = {'uuid': 'abc-123', 'description': 'ANSIBLE_TEST_SNAT'}
+    mocker.patch.object(snat, '_api_post', return_value={'rows': [automatic, manual]})
+
+    assert snat.api_search_post(cnf={}) == [manual]
