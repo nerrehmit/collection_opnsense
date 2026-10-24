@@ -449,6 +449,33 @@
         (rb_entry[0]['url_username'] | string) != "test"
       when: not ansible_check_mode
 
+    - name: Changing urltable auth - only the username
+      oxlorg.opnsense.alias:
+        name: 'ANSIBLE_TEST_1_2_URLTABLE1'
+        type: 'urltable'
+        updatefreq_days: 2
+        content: 'https://www.spamhaus.org/drop/drop.txt'
+        url_auth_type: 'Basic'
+        url_username: 'test2'
+        url_password: 'test'
+      register: opnurlauth2
+      failed_when: >
+        opnurlauth2.failed or
+        not opnurlauth2.changed
+
+    - name: Changing urltable auth - only the username - read back
+      oxlorg.opnsense.list:
+        target: 'alias'
+      register: opn_rb_auth
+      vars:
+        rb_entry: >-
+          {{ opn_rb_auth.data | selectattr('name', 'equalto', "ANSIBLE_TEST_1_2_URLTABLE1") | list }}
+      failed_when: >
+        opn_rb_auth.failed or
+        rb_entry | length != 1 or
+        (rb_entry[0]['url_username'] | string) != "test2"
+      when: not ansible_check_mode
+
     - name: Adding invalid urltable
       oxlorg.opnsense.alias:
         name: 'ANSIBLE_TEST_1_2_URLTABLE3'
