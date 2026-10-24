@@ -121,14 +121,14 @@
     - name: Adding dummy connection
       oxlorg.opnsense.ipsec_connection:
         name: 'ANSIBLE_TEST_5_1'
-      when: not ansible_check_mode
+      check_mode: false
 
     - name: Adding dummy cert
       oxlorg.opnsense.ipsec_cert:
         name: 'ANSIBLE_TEST_3_1'
         public_key: "{{ test1.pub }}"
         private_key: "{{ test1.priv }}"
-      when: not ansible_check_mode
+      check_mode: false
 
     - name: Adding 1 (psk)
       oxlorg.opnsense.ipsec_auth_remote:
@@ -290,12 +290,13 @@
       oxlorg.opnsense.ipsec_connection:
         name: 'ANSIBLE_TEST_5_1'
         state: 'absent'
-      when: not ansible_check_mode
+      check_mode: false
 
     - name: Cleanup cert
       oxlorg.opnsense.ipsec_cert:
         name: 'ANSIBLE_TEST_3_1'
         state: 'absent'
+      check_mode: false
 
     - name: Listing
       oxlorg.opnsense.list:

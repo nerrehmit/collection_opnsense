@@ -32,7 +32,7 @@
     - name: Adding dummy connection
       oxlorg.opnsense.ipsec_connection:
         name: 'ANSIBLE_TEST_3_1'
-      when: not ansible_check_mode
+      check_mode: false
 
     - name: Removing - does not exist
       oxlorg.opnsense.ipsec_child:
@@ -229,7 +229,7 @@
       oxlorg.opnsense.ipsec_connection:
         name: 'ANSIBLE_TEST_3_1'
         state: 'absent'
-      when: not ansible_check_mode
+      check_mode: false
 
     - name: Listing
       oxlorg.opnsense.list:

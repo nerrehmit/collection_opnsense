@@ -39,6 +39,7 @@
       loop:
         - ANSIBLE_TEST_1_1
         - ANSIBLE_TEST_1_2
+      check_mode: false
 
     - name: Adding Dummy Group
       oxlorg.opnsense.group:
@@ -46,6 +47,7 @@
       loop:
         - ANSIBLE_TEST_1_1
         - ANSIBLE_TEST_1_2
+      check_mode: false
 
     - name: Granting 1
       oxlorg.opnsense.privilege:
@@ -140,7 +142,7 @@
       loop:
         - ANSIBLE_TEST_1_1
         - ANSIBLE_TEST_1_2
-      when: not ansible_check_mode
+      check_mode: false
 
     - name: Adding Dummy Group
       oxlorg.opnsense.group:
@@ -149,7 +151,7 @@
       loop:
         - ANSIBLE_TEST_1_1
         - ANSIBLE_TEST_1_2
-      when: not ansible_check_mode
+      check_mode: false
 
     - name: Check mode - nothing was written
       oxlorg.opnsense.list:

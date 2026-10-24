@@ -42,16 +42,19 @@
       oxlorg.opnsense.acme_account:
         name: 'ANSIBLE_TEST_DUMMY_1_1'
         ca: letsencrypt_test
+      check_mode: false
 
     - name: Adding dummy validation
       oxlorg.opnsense.acme_validation:
         name: 'ANSIBLE_TEST_DUMMY_1_1'
         method: http01
+      check_mode: false
 
     - name: Adding dummy action
       oxlorg.opnsense.acme_action:
         name: 'ANSIBLE_TEST_DUMMY_1_1'
         type: configd_restart_gui
+      check_mode: false
 
     - name: Adding 1 - failing because of missing name
       oxlorg.opnsense.acme_certificate:
@@ -343,18 +346,21 @@
         name: 'ANSIBLE_TEST_DUMMY_1_1'
         state: 'absent'
       diff: false
+      check_mode: false
 
     - name: Cleanup Dummy Validation
       oxlorg.opnsense.acme_validation:
         name: 'ANSIBLE_TEST_DUMMY_1_1'
         state: 'absent'
       diff: false
+      check_mode: false
 
     - name: Cleanup Dummy Action
       oxlorg.opnsense.acme_action:
         name: 'ANSIBLE_TEST_DUMMY_1_1'
         state: 'absent'
       diff: false
+      check_mode: false
 
     - name: Check mode - nothing was written
       oxlorg.opnsense.list:

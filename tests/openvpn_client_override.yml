@@ -28,7 +28,7 @@
         server: '192.168.77.0/29'
         ca: 'OpenVPN'
         certificate: 'OpenVPN Server'
-      when: not ansible_check_mode
+      check_mode: false
 
     - name: Listing
       oxlorg.opnsense.list:
@@ -214,7 +214,7 @@
       oxlorg.opnsense.openvpn_server:
         name: 'ANSIBLE_TEST_3_1'
         state: 'absent'
-      when: not ansible_check_mode
+      check_mode: false
 
     - name: Listing
       oxlorg.opnsense.list:

@@ -179,9 +179,9 @@ run_test_soft 'ipsec_psk' 1
 run_test_soft 'ipsec_pool' 1
 run_test_soft 'ipsec_connection' 1
 run_test_soft 'ipsec_vti' 1
-run_test_soft 'ipsec_child' 0  # check mode => dependency on connection-entry
-run_test_soft 'ipsec_auth_local' 0  # check mode => dependency on connection/cert-entry
-run_test_soft 'ipsec_auth_remote' 0  # check mode => dependency on connection/cert-entry
+run_test_soft 'ipsec_child' 1
+run_test_soft 'ipsec_auth_local' 1
+run_test_soft 'ipsec_auth_remote' 1
 run_test_soft 'ipsec_manual_spd' 1
 run_test_soft 'ipsec_general' 1
 run_test_soft 'ids_action' 1
@@ -195,7 +195,7 @@ run_test_soft 'openvpn_status' 1
 run_test_soft 'openvpn_static_key' 1
 run_test_soft 'openvpn_client' 1
 run_test_soft 'openvpn_server' 1
-run_test_soft 'openvpn_client_override' 0  # check mode => dependency on server-entry
+run_test_soft 'openvpn_client_override' 1
 # run_test_soft 'openvpn_client_template' 1
 # run_test_soft 'openvpn_client_export' 1
 run_test_soft 'nginx_general' 1
@@ -211,7 +211,7 @@ run_test_soft 'acme_general' 1
 run_test_soft 'acme_account' 1
 run_test_soft 'acme_validation' 1
 run_test_soft 'acme_action' 1
-run_test_soft 'acme_certificate' 0  # check mode => dependency on other acme-entries
+run_test_soft 'acme_certificate' 1
 run_test_soft 'postfix_general' 1
 run_test_soft 'postfix_domain' 1
 run_test_soft 'postfix_recipient' 1
@@ -228,7 +228,7 @@ run_test_soft 'wazuh_agent' 1
 run_test_soft 'raw' 1
 run_test_soft 'user' 1
 run_test_soft 'group' 1
-run_test_soft 'privilege' 0 # check mode => dependency on user and group
+run_test_soft 'privilege' 1
 run_test_soft 'neighbor' 1
 run_test_soft 'dnsmasq_general' 1
 run_test_soft 'dnsmasq_domain' 1
