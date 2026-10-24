@@ -19,6 +19,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'frr_bgp_neighbor'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn_pre1
@@ -101,6 +107,39 @@
       failed_when: >
         opn9.failed or
         not opn9.changed
+
+    - name: Changing 1 - nothing changed
+      oxlorg.opnsense.frr_bgp_neighbor:
+        description: 'ANSIBLE_TEST_1_1'
+        as_number: 1337
+        ip: '10.0.0.1'
+        password: "{{ 'random' | hash('md5') }}"
+        weight: 200
+        local_ip: '10.0.0.254'
+        source_int: 'opt1'
+        multi_protocol: true
+        keepalive: 45
+        hold_down: 135
+      register: opn_rr1
+      failed_when: >
+        opn_rr1.failed or
+        opn_rr1.changed
+      when: not ansible_check_mode
+
+    - name: Changing 1 - read back
+      oxlorg.opnsense.list:
+        target: 'frr_bgp_neighbor'
+      register: opn_rb1
+      vars:
+        rb_entry: >-
+          {{ opn_rb1.data | selectattr('description', 'equalto', "ANSIBLE_TEST_1_1") | list }}
+      failed_when: >
+        opn_rb1.failed or
+        rb_entry | length != 1 or
+        (rb_entry[0]['hold_down'] | string) != "135" or
+        (rb_entry[0]['keepalive'] | string) != "45" or
+        (rb_entry[0]['local_ip'] | string) != "10.0.0.254"
+      when: not ansible_check_mode
 
     - name: Disabling 1
       oxlorg.opnsense.frr_bgp_neighbor:
@@ -325,3 +364,12 @@
         'data' not in opn_clean2 or
         opn_clean2.data | length != 0
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'frr_bgp_neighbor'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

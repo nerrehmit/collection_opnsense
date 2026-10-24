@@ -16,6 +16,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'nginx_upstream_server'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn_pre1
@@ -72,8 +78,60 @@
         ng1.changed
       when: not ansible_check_mode
 
+    - name: Reload - service status before
+      oxlorg.opnsense.service:
+        name: 'nginx'
+        action: 'status'
+      register: opn_rl_svc27
+      when: not ansible_check_mode
+
+    - name: Adding 1 - should succeed - changed with reload
+      oxlorg.opnsense.nginx_upstream_server:
+        name: 'ANSIBLE@TEST1'
+        server: 192.168.1.1
+        port: 80
+        reload: true
+        priority: 2
+      register: opn_rl27_1
+      failed_when: >
+        opn_rl27_1.failed or
+        not opn_rl27_1.changed
+      when: not ansible_check_mode
+
+    - name: Adding 1 - should succeed - changed back with reload
+      oxlorg.opnsense.nginx_upstream_server:
+        name: 'ANSIBLE@TEST1'
+        server: 192.168.1.1
+        port: 80
+        priority: 1
+        reload: true
+      register: opn_rl27_2
+      failed_when: >
+        opn_rl27_2.failed or
+        not opn_rl27_2.changed
+      when: not ansible_check_mode
+
+    - name: Reload - service status unchanged
+      oxlorg.opnsense.service:
+        name: 'nginx'
+        action: 'status'
+      register: opn_rl_svc27_after
+      failed_when: >
+        opn_rl_svc27_after.failed or
+        (opn_rl_svc27_after.data.status | default('')) != (opn_rl_svc27.data.status | default(''))
+      when: not ansible_check_mode
+
     - name: Remove 1 - should succeed
       oxlorg.opnsense.nginx_upstream_server:
         name: 'ANSIBLE@TEST1'
         state: 'absent'
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'nginx_upstream_server'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

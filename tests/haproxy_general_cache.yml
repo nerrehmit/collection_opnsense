@@ -16,6 +16,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'haproxy_general_cache'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn_pre1
@@ -42,6 +48,20 @@
         opn1.failed or
         not opn1.changed
 
+    - name: Configuring basic cache settings - nothing changed
+      oxlorg.opnsense.haproxy_general_cache:
+        enabled: true
+        total_max_size: 16
+        max_age: 120
+        max_object_size: 8192
+        process_vary: true
+        max_secondary_entries: 20
+      register: opn_rr1
+      failed_when: >
+        opn_rr1.failed or
+        opn_rr1.changed
+      when: not ansible_check_mode
+
     - name: Changing cache settings
       oxlorg.opnsense.haproxy_general_cache:
         enabled: true
@@ -54,6 +74,20 @@
       failed_when: >
         opn9.failed or
         not opn9.changed
+
+    - name: Changing cache settings - nothing changed
+      oxlorg.opnsense.haproxy_general_cache:
+        enabled: true
+        total_max_size: 32
+        max_age: 300
+        max_object_size: 16384
+        process_vary: false
+        max_secondary_entries: 50
+      register: opn_rr2
+      failed_when: >
+        opn_rr2.failed or
+        opn_rr2.changed
+      when: not ansible_check_mode
 
     - name: Disabling HAProxy cache
       oxlorg.opnsense.haproxy_general_cache:
@@ -133,3 +167,12 @@
         process_vary: false
         max_secondary_entries: 10
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'haproxy_general_cache'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

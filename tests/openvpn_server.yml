@@ -16,6 +16,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'openvpn_instance'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn_pre1
@@ -84,6 +90,49 @@
       failed_when: >
         opn9.failed or
         not opn9.changed
+
+    - name: Changing 1 - nothing changed
+      oxlorg.opnsense.openvpn_server:
+        name: 'ANSIBLE_TEST_1_1'
+        port: 20000
+        protocol: 'udp'
+        mode: 'tun'
+        server: '192.168.77.0/29'
+        network_local: ['192.168.78.128/27']
+        ca: 'OpenVPN'
+        certificate: 'OpenVPN Server'
+        cert_depth: 1
+        data_ciphers: ['AES-256-GCM', 'CHACHA20-POLY1305']
+        max_connections: 100
+        auth_mode: ['Local Database']
+        user_as_cn: true
+        user_cn_strict: true
+        push_options: ['block-outside-dns', 'register-dns']
+        mtu: 1400
+      register: opn_rr1
+      failed_when: >
+        opn_rr1.failed or
+        opn_rr1.changed
+      when: not ansible_check_mode
+
+    - name: Changing 1 - read back
+      oxlorg.opnsense.list:
+        target: 'openvpn_instance'
+      register: opn_rb1
+      vars:
+        rb_entry: >-
+          {{ opn_rb1.data | selectattr('name', 'equalto', "ANSIBLE_TEST_1_1") | list }}
+        rb_authmode: >-
+          {{ rb_entry[0]['authmode'] | dict2items | selectattr('value.selected', 'in', [1, '1']) | map(attribute='key') | list }}
+        rb_data_ciphers: >-
+          {{ rb_entry[0]['data-ciphers'] | dict2items | selectattr('value.selected', 'in', [1, '1']) | map(attribute='key') | list }}
+      failed_when: >
+        opn_rb1.failed or
+        rb_entry | length != 1 or
+        (rb_authmode | map('string') | sort | join(',')) != "Local Database" or
+        (rb_data_ciphers | map('string') | sort | join(',')) != "AES-256-GCM,CHACHA20-POLY1305" or
+        (rb_entry[0]['maxclients'] | string) != "100"
+      when: not ansible_check_mode
 
     - name: Disabling 1
       oxlorg.opnsense.openvpn_server:
@@ -317,3 +366,12 @@
         name: 'ANSIBLE_TEST_3_1'
         state: 'absent'
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'openvpn_instance'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

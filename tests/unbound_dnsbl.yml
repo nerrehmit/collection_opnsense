@@ -16,6 +16,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'unbound_dnsbl'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn_pre1
@@ -85,6 +91,48 @@
       failed_when: >
         opn2.failed or
         not opn2.changed
+      when: not ansible_check_mode
+
+    - name: Changing 1 - nothing changed
+      oxlorg.opnsense.unbound_dnsbl:
+        name: 'ANSIBLE_TEST_1'
+        providers: 'atf'
+        domains_allow:
+          - 'opnsense.org'
+          - 'oxl.at'
+        domains_block:
+          - 'example.tor'
+        wildcard_domains_block:
+          - 'example.tor'
+        source_networks:
+          - '10.10.10.0/24'
+          - '10.3.10.0/24'
+        nxdomain: true
+        enabled: true
+        reload: false  # speed
+      register: opn_rr1
+      failed_when: >
+        opn_rr1.failed or
+        opn_rr1.changed
+      when: not ansible_check_mode
+
+    - name: Changing 1 - read back
+      oxlorg.opnsense.list:
+        target: 'unbound_dnsbl'
+      register: opn_rb1
+      vars:
+        rb_entry: >-
+          {{ opn_rb1.data | selectattr('name', 'equalto', "ANSIBLE_TEST_1") | list }}
+        rb_domains_allow: >-
+          {{ rb_entry[0]['domains_allow'].split(',') if rb_entry[0]['domains_allow'] is string else rb_entry[0]['domains_allow'] }}
+        rb_source_networks: >-
+          {{ rb_entry[0]['source_networks'].split(',') if rb_entry[0]['source_networks'] is string else rb_entry[0]['source_networks'] }}
+      failed_when: >
+        opn_rb1.failed or
+        rb_entry | length != 1 or
+        (rb_domains_allow | map('string') | sort | join(',')) != "opnsense.org,oxl.at" or
+        (rb_entry[0]['nxdomain'] | string | lower) not in ['true', '1', 'yes', 'on'] or
+        (rb_source_networks | map('string') | sort | join(',')) != "10.10.10.0/24,10.3.10.0/24"
       when: not ansible_check_mode
 
     - name: Disabling 1
@@ -177,3 +225,12 @@
         - 'ANSIBLE_TEST_1'
         - 'ANSIBLE_TEST_2'
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'unbound_dnsbl'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

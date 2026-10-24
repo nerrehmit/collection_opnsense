@@ -22,6 +22,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'unbound_host'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn10
@@ -113,6 +119,52 @@
         not opn7.changed
       when: not ansible_check_mode
 
+    - name: Reload - service status before
+      oxlorg.opnsense.service:
+        name: 'unbound'
+        action: 'status'
+      register: opn_rl_svc10
+      when: not ansible_check_mode
+
+    - name: Enabling 1 - changed with reload
+      oxlorg.opnsense.unbound_host:
+        hostname: 'host'
+        domain: 'opnsense.test.oxlorg.net'
+        value: '192.168.0.1'
+        description: 'ANSIBLE_TEST_1_1'
+        reload: true
+        timeout: 120
+        enabled: false
+      register: opn_rl10_1
+      failed_when: >
+        opn_rl10_1.failed or
+        not opn_rl10_1.changed
+      when: not ansible_check_mode
+
+    - name: Enabling 1 - changed back with reload
+      oxlorg.opnsense.unbound_host:
+        hostname: 'host'
+        domain: 'opnsense.test.oxlorg.net'
+        value: '192.168.0.1'
+        description: 'ANSIBLE_TEST_1_1'
+        reload: true
+        timeout: 120
+      register: opn_rl10_2
+      failed_when: >
+        opn_rl10_2.failed or
+        not opn_rl10_2.changed
+      when: not ansible_check_mode
+
+    - name: Reload - service status unchanged
+      oxlorg.opnsense.service:
+        name: 'unbound'
+        action: 'status'
+      register: opn_rl_svc10_after
+      failed_when: >
+        opn_rl_svc10_after.failed or
+        (opn_rl_svc10_after.data.status | default('')) != (opn_rl_svc10.data.status | default(''))
+      when: not ansible_check_mode
+
     - name: Adding 2
       oxlorg.opnsense.unbound_host:
         hostname: 'mx'
@@ -197,3 +249,12 @@
         'data' not in opn2 or
         opn2.data | length != 0
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'unbound_host'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

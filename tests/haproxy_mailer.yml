@@ -16,6 +16,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'haproxy_mailer'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Cleanup
       oxlorg.opnsense.haproxy_mailer:
         name: "{{ item }}"
@@ -117,6 +123,23 @@
         opn9_2.changed
       when: not ansible_check_mode
 
+    - name: Changing Mailer settings - read back
+      oxlorg.opnsense.list:
+        target: 'haproxy_mailer'
+      register: opn_rb1
+      vars:
+        rb_entry: >-
+          {{ opn_rb1.data | selectattr('name', 'equalto', "ANSIBLE_TEST_1_1") | list }}
+        rb_mailservers: >-
+          {{ rb_entry[0]['mailservers'].split(',') if rb_entry[0]['mailservers'] is string else rb_entry[0]['mailservers'] }}
+      failed_when: >
+        opn_rb1.failed or
+        rb_entry | length != 1 or
+        (rb_entry[0]['description'] | string) != "Modified test mailer for basic alerts" or
+        (rb_entry[0]['loglevel'] | string) != "info" or
+        (rb_mailservers | map('string') | sort | join(',')) != "192.168.1.10:25"
+      when: not ansible_check_mode
+
     - name: Disabling HAProxy Mailer
       oxlorg.opnsense.haproxy_mailer:
         name: 'ANSIBLE_TEST_1_1'
@@ -194,3 +217,12 @@
         - 'ANSIBLE_TEST_1_1'
         - 'ANSIBLE_TEST_1_2'
         - 'ANSIBLE_TEST_1_3'
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'haproxy_mailer'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

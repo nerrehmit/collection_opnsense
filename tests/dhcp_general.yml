@@ -16,6 +16,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'dhcp_general'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn_pre1
@@ -37,6 +43,16 @@
       failed_when: >
         opn1.failed or
         not opn1.changed
+
+    - name: Configuring - nothing changed
+      oxlorg.opnsense.dhcp_general:
+        enabled: true
+        interfaces: ['opt1']
+      register: opn_rr1
+      failed_when: >
+        opn_rr1.failed or
+        opn_rr1.changed
+      when: not ansible_check_mode
 
     - name: Changing
       oxlorg.opnsense.dhcp_general:
@@ -93,3 +109,12 @@
     - name: Cleanup
       oxlorg.opnsense.dhcp_general:
         enabled: false
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'dhcp_general'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

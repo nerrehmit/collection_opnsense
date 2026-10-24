@@ -19,6 +19,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'route'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Removing - does not exist
       oxlorg.opnsense.route:
         description: 'ANSIBLE_TEST_1'
@@ -105,6 +111,31 @@
         not opn8.changed
       when: not ansible_check_mode
 
+    - name: Enabling 1 - changed with reload
+      oxlorg.opnsense.route:
+        description: 'ANSIBLE_TEST_1'
+        network: '4.4.4.1/32'
+        gateway: 'LAN_GW'
+        reload: true
+        enabled: false
+      register: opn_rl7_1
+      failed_when: >
+        opn_rl7_1.failed or
+        not opn_rl7_1.changed
+      when: not ansible_check_mode
+
+    - name: Enabling 1 - changed back with reload
+      oxlorg.opnsense.route:
+        description: 'ANSIBLE_TEST_1'
+        network: '4.4.4.1/32'
+        gateway: 'LAN_GW'
+        reload: true
+      register: opn_rl7_2
+      failed_when: >
+        opn_rl7_2.failed or
+        not opn_rl7_2.changed
+      when: not ansible_check_mode
+
     - name: Listing rules
       oxlorg.opnsense.list:
       register: opn1
@@ -129,3 +160,12 @@
       failed_when: >
         'data' not in opn2 or
         opn2.data | length != 0
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'route'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

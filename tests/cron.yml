@@ -17,6 +17,12 @@
 
   tasks:
     # NOTE: one exists because of IDS
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'cron'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn7
@@ -122,6 +128,41 @@
         not opn4.changed
       when: not ansible_check_mode
 
+    - name: Enabling 2 - changed with reload
+      oxlorg.opnsense.cron:
+        description: 'ANSIBLE_TEST_2'
+        command: 'system remote backup'
+        minutes: '26'
+        hours: '15'
+        days: '5,9,26'
+        months: '8'
+        weekdays: '4,5,7'
+        who: 'root'
+        reload: true
+        enabled: false
+      register: opn_rl8_1
+      failed_when: >
+        opn_rl8_1.failed or
+        not opn_rl8_1.changed
+      when: not ansible_check_mode
+
+    - name: Enabling 2 - changed back with reload
+      oxlorg.opnsense.cron:
+        description: 'ANSIBLE_TEST_2'
+        command: 'system remote backup'
+        minutes: '26'
+        hours: '15'
+        days: '5,9,26'
+        months: '8'
+        weekdays: '4,5,7'
+        who: 'root'
+        reload: true
+      register: opn_rl8_2
+      failed_when: >
+        opn_rl8_2.failed or
+        not opn_rl8_2.changed
+      when: not ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn8
@@ -137,3 +178,12 @@
       loop:
         - 'ANSIBLE_TEST_1'
         - 'ANSIBLE_TEST_2'
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'cron'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

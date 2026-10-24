@@ -16,6 +16,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'dnsmasq_domain'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn_pre1
@@ -62,6 +68,31 @@
       failed_when: >
         opn2.failed or
         not opn2.changed
+
+    - name: Changing 1 - nothing changed
+      oxlorg.opnsense.dnsmasq_domain:
+        domain: 'test1.oxlorg'
+        ip: 192.168.100.100
+        port: 5353
+      register: opn_rr1
+      failed_when: >
+        opn_rr1.failed or
+        opn_rr1.changed
+      when: not ansible_check_mode
+
+    - name: Changing 1 - read back
+      oxlorg.opnsense.list:
+        target: 'dnsmasq_domain'
+      register: opn_rb1
+      vars:
+        rb_entry: >-
+          {{ opn_rb1.data | selectattr('domain', 'equalto', "test1.oxlorg") | list }}
+      failed_when: >
+        opn_rb1.failed or
+        rb_entry | length != 1 or
+        (rb_entry[0]['ip'] | string) != "192.168.100.100" or
+        (rb_entry[0]['port'] | string) != "5353"
+      when: not ansible_check_mode
 
     - name: Adding 2
       oxlorg.opnsense.dnsmasq_domain:
@@ -118,3 +149,12 @@
         'data' not in opn_clean1 or
         opn_clean1.data | length != 0
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'dnsmasq_domain'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

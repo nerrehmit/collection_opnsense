@@ -29,6 +29,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'alias'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Purging all
       oxlorg.opnsense.alias_multi:
         multi_control:
@@ -580,3 +586,12 @@
         'data' not in opn_clean2 or
         opn_clean2.data | length != 0
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'alias'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

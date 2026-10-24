@@ -13,6 +13,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'nut'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
         target: nut
@@ -69,6 +75,21 @@
       register: opn1
       failed_when: opn1.failed or not opn1.changed
 
+    - name: Configuring - standalone USBHID driver - nothing changed
+      oxlorg.opnsense.nut:
+        enabled: true
+        mode: standalone
+        usbhid_enable: true
+        usbhid_args:
+          - port=auto
+          - lowbatt=10
+        reload: false
+      register: opn_rr1
+      failed_when: >
+        opn_rr1.failed or
+        opn_rr1.changed
+      when: not ansible_check_mode
+
     - name: Configuring - standalone APCSMART driver
       oxlorg.opnsense.nut:
         enabled: true
@@ -81,6 +102,21 @@
       register: opn2
       failed_when: opn2.failed or not opn2.changed
 
+    - name: Configuring - standalone APCSMART driver - nothing changed
+      oxlorg.opnsense.nut:
+        enabled: true
+        mode: standalone
+        apcsmart_enable: true
+        apcsmart_args:
+          - port=auto
+          - override.battery.charge.low=10
+        reload: false
+      register: opn_rr2
+      failed_when: >
+        opn_rr2.failed or
+        opn_rr2.changed
+      when: not ansible_check_mode
+
     - name: Configuring - standalone APCUPSD driver
       oxlorg.opnsense.nut:
         enabled: true
@@ -92,6 +128,20 @@
       register: opn3
       failed_when: opn3.failed or not opn3.changed
 
+    - name: Configuring - standalone APCUPSD driver - nothing changed
+      oxlorg.opnsense.nut:
+        enabled: true
+        mode: standalone
+        apcupsd_enable: true
+        apcupsd_host: 192.168.1.100
+        apcupsd_port: 3551
+        reload: false
+      register: opn_rr3
+      failed_when: >
+        opn_rr3.failed or
+        opn_rr3.changed
+      when: not ansible_check_mode
+
     - name: Configuring - standalone BCMXCPUSB driver
       oxlorg.opnsense.nut:
         enabled: true
@@ -102,6 +152,20 @@
         reload: false
       register: opn4
       failed_when: opn4.failed or not opn4.changed
+
+    - name: Configuring - standalone BCMXCPUSB driver - nothing changed
+      oxlorg.opnsense.nut:
+        enabled: true
+        mode: standalone
+        bcmxcpusb_enable: true
+        bcmxcpusb_args:
+          - port=auto
+        reload: false
+      register: opn_rr4
+      failed_when: >
+        opn_rr4.failed or
+        opn_rr4.changed
+      when: not ansible_check_mode
 
     - name: Configuring - standalone BlazerUSB driver
       oxlorg.opnsense.nut:
@@ -116,6 +180,22 @@
       register: opn5
       failed_when: opn5.failed or not opn5.changed
 
+    - name: Configuring - standalone BlazerUSB driver - nothing changed
+      oxlorg.opnsense.nut:
+        enabled: true
+        mode: standalone
+        blazerusb_enable: true
+        blazerusb_args:
+          - port=auto
+          - norating
+          - override.battery.packs=2
+        reload: false
+      register: opn_rr5
+      failed_when: >
+        opn_rr5.failed or
+        opn_rr5.changed
+      when: not ansible_check_mode
+
     - name: Configuring - standalone BlazerSerial driver
       oxlorg.opnsense.nut:
         enabled: true
@@ -129,6 +209,22 @@
       register: opn6
       failed_when: opn6.failed or not opn6.changed
 
+    - name: Configuring - standalone BlazerSerial driver - nothing changed
+      oxlorg.opnsense.nut:
+        enabled: true
+        mode: standalone
+        blazerser_enable: true
+        blazerser_args:
+          - port=auto
+          - offdelay=45
+          - override.battery.packs=2
+        reload: false
+      register: opn_rr6
+      failed_when: >
+        opn_rr6.failed or
+        opn_rr6.changed
+      when: not ansible_check_mode
+
     - name: Configuring - Netclient driver
       oxlorg.opnsense.nut:
         enabled: true
@@ -140,6 +236,21 @@
         reload: false
       register: opn7
       failed_when: opn7.failed or not opn7.changed
+
+    - name: Configuring - Netclient driver - nothing changed
+      oxlorg.opnsense.nut:
+        enabled: true
+        mode: netclient
+        netclient_address: 192.168.1.200
+        netclient_port: 3494
+        netclient_user: remotemon
+        netclient_password: some password
+        reload: false
+      register: opn_rr7
+      failed_when: >
+        opn_rr7.failed or
+        opn_rr7.changed
+      when: not ansible_check_mode
 
     - name: Configuring - standalone QX driver
       oxlorg.opnsense.nut:
@@ -153,6 +264,21 @@
       register: opn8
       failed_when: opn8.failed or not opn8.changed
 
+    - name: Configuring - standalone QX driver - nothing changed
+      oxlorg.opnsense.nut:
+        enabled: true
+        mode: standalone
+        qx_enable: true
+        qx_args:
+          - port=auto
+          - stayoff
+        reload: false
+      register: opn_rr8
+      failed_when: >
+        opn_rr8.failed or
+        opn_rr8.changed
+      when: not ansible_check_mode
+
     - name: Configuring - standalone Riello driver
       oxlorg.opnsense.nut:
         enabled: true
@@ -164,6 +290,21 @@
         reload: false
       register: opn9
       failed_when: opn9.failed or not opn9.changed
+
+    - name: Configuring - standalone Riello driver - nothing changed
+      oxlorg.opnsense.nut:
+        enabled: true
+        mode: standalone
+        riello_enable: true
+        riello_args:
+          - port=auto
+          - localcalculation
+        reload: false
+      register: opn_rr9
+      failed_when: >
+        opn_rr9.failed or
+        opn_rr9.changed
+      when: not ansible_check_mode
 
     - name: Configuring - standalone SNMP driver
       oxlorg.opnsense.nut:
@@ -177,6 +318,22 @@
         reload: false
       register: opn10
       failed_when: opn10.failed or not opn10.changed
+
+    - name: Configuring - standalone SNMP driver - nothing changed
+      oxlorg.opnsense.nut:
+        enabled: true
+        mode: standalone
+        snmp_enable: true
+        snmp_args:
+          - community=port
+          - snmp_version=v2c
+          - port=192.168.1.150
+        reload: false
+      register: opn_rr10
+      failed_when: >
+        opn_rr10.failed or
+        opn_rr10.changed
+      when: not ansible_check_mode
 
     - name: Configuring - remote access
       oxlorg.opnsense.nut:
@@ -213,6 +370,64 @@
       failed_when: opn12.failed or opn12.changed
       when: not ansible_check_mode
 
+    - name: Configuring - remote access - changed with reload
+      oxlorg.opnsense.nut:
+        enabled: true
+        mode: standalone
+        admin_password: some admin password
+        monitor_password: some monitor password
+        usbhid_enable: true
+        usbhid_args:
+          - port=auto
+          - lowbatt=10
+        reload: true
+        listen:
+          - "192.168.1.1"
+      register: opn_rl28_1
+      failed_when: >
+        opn_rl28_1.failed or
+        not opn_rl28_1.changed
+      when: not ansible_check_mode
+
+    - name: Configuring - remote access - changed back with reload
+      oxlorg.opnsense.nut:
+        enabled: true
+        mode: standalone
+        listen:
+          - 192.168.1.1
+          - 10.0.0.1
+        admin_password: some admin password
+        monitor_password: some monitor password
+        usbhid_enable: true
+        usbhid_args:
+          - port=auto
+          - lowbatt=10
+        reload: true
+      register: opn_rl28_2
+      failed_when: >
+        opn_rl28_2.failed or
+        not opn_rl28_2.changed
+      when: not ansible_check_mode
+
+    - name: Reload - service is running
+      oxlorg.opnsense.service:
+        name: 'nut'
+        action: 'status'
+      register: opn_rl_svc28_after
+      failed_when: >
+        opn_rl_svc28_after.failed or
+        (opn_rl_svc28_after.data.status | default('')) != 'running'
+      when: not ansible_check_mode
+
     - name: Cleanup
       oxlorg.opnsense.nut:
         enabled: false
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'nut'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

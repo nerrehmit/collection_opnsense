@@ -16,6 +16,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'openvpn_instance'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn_pre1
@@ -80,6 +86,78 @@
       failed_when: >
         opn9.failed or
         not opn9.changed
+
+    - name: Changing 1 - nothing changed
+      oxlorg.opnsense.openvpn_client:
+        name: 'ANSIBLE_TEST_1_1'
+        remote: 'openvpn.test.oxlorg.net:20000'
+        protocol: 'udp'
+        mode: 'tun'
+        network_remote: ['192.168.77.128/27', '192.168.89.64/27']
+        log_level: 5
+        ca: 'OpenVPN'
+        certificate: 'OpenVPN Client'
+        mtu: 1400
+        mss_fix: true
+      register: opn_rr1
+      failed_when: >
+        opn_rr1.failed or
+        opn_rr1.changed
+      when: not ansible_check_mode
+
+    - name: Changing 1 - read back
+      oxlorg.opnsense.list:
+        target: 'openvpn_instance'
+      register: opn_rb1
+      vars:
+        rb_entry: >-
+          {{ opn_rb1.data | selectattr('name', 'equalto', "ANSIBLE_TEST_1_1") | list }}
+      failed_when: >
+        opn_rb1.failed or
+        rb_entry | length != 1 or
+        (rb_entry[0]['log_level'] | string) != "5" or
+        (rb_entry[0]['mss_fix'] | string | lower) not in ['true', '1', 'yes', 'on'] or
+        (rb_entry[0]['mtu'] | string) != "1400"
+      when: not ansible_check_mode
+
+    - name: Changing 1 - changed with reload
+      oxlorg.opnsense.openvpn_client:
+        name: 'ANSIBLE_TEST_1_1'
+        remote: 'openvpn.test.oxlorg.net:20000'
+        protocol: 'udp'
+        mode: 'tun'
+        network_remote: ['192.168.77.128/27', '192.168.89.64/27']
+        log_level: 5
+        ca: 'OpenVPN'
+        certificate: 'OpenVPN Client'
+        mtu: 1400
+        mss_fix: true
+        reload: true
+        enabled: false
+      register: opn_rl21_1
+      failed_when: >
+        opn_rl21_1.failed or
+        not opn_rl21_1.changed
+      when: not ansible_check_mode
+
+    - name: Changing 1 - changed back with reload
+      oxlorg.opnsense.openvpn_client:
+        name: 'ANSIBLE_TEST_1_1'
+        remote: 'openvpn.test.oxlorg.net:20000'
+        protocol: 'udp'
+        mode: 'tun'
+        network_remote: ['192.168.77.128/27', '192.168.89.64/27']
+        log_level: 5
+        ca: 'OpenVPN'
+        certificate: 'OpenVPN Client'
+        mtu: 1400
+        mss_fix: true
+        reload: true
+      register: opn_rl21_2
+      failed_when: >
+        opn_rl21_2.failed or
+        not opn_rl21_2.changed
+      when: not ansible_check_mode
 
     - name: Disabling 1
       oxlorg.opnsense.openvpn_client:
@@ -245,3 +323,12 @@
         name: 'ANSIBLE_TEST_2_1'
         state: 'absent'
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'openvpn_instance'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

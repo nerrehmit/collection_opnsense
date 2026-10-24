@@ -29,6 +29,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'gateway'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Removing - does not exist
       oxlorg.opnsense.gateway:
         name: 'Test_GW'
@@ -121,3 +127,12 @@
       failed_when: >
         'data' not in opn2 or
         opn2.data | length != pre_existing_gws
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'gateway'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

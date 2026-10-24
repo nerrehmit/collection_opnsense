@@ -16,6 +16,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'haproxy_errorfile'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn_pre1
@@ -220,6 +226,42 @@
         opn9.failed or
         not opn9.changed
 
+    - name: Changing Error file content - nothing changed
+      oxlorg.opnsense.haproxy_errorfile:
+        name: 'ANSIBLE_TEST_1_1'
+        description: 'Modified custom 503 Service Unavailable page'
+        code: 'x503'
+        content: |
+          HTTP/1.0 503 Service Unavailable
+          Content-Type: text/html
+          Cache-Control: no-cache
+          Connection: close
+
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>Maintenance Mode</title>
+            <style>
+              body { font-family: Arial, sans-serif; background: #f0f2f5; margin: 0; padding: 50px; }
+              .maintenance { max-width: 500px; margin: 0 auto; background: white; padding: 40px; border-radius: 10px; text-align: center; }
+              h1 { color: #1976d2; margin-bottom: 20px; }
+              p { color: #555; line-height: 1.6; margin-bottom: 15px; }
+            </style>
+          </head>
+          <body>
+            <div class="maintenance">
+              <h1>🔧 Maintenance in Progress</h1>
+              <p>We're currently performing scheduled maintenance to improve our service.</p>
+              <p>We'll be back online shortly. Thank you for your patience!</p>
+            </div>
+          </body>
+          </html>
+      register: opn_rr1
+      failed_when: >
+        opn_rr1.failed or
+        opn_rr1.changed
+      when: not ansible_check_mode
+
     - name: Changing Error file code
       oxlorg.opnsense.haproxy_errorfile:
         name: 'ANSIBLE_TEST_1_1'
@@ -328,6 +370,37 @@
         opn8.changed
       when: not ansible_check_mode
 
+    - name: Changing Error file back to original - read back
+      oxlorg.opnsense.list:
+        target: 'haproxy_errorfile'
+      register: opn_rb1
+      vars:
+        rb_entry: >-
+          {{ opn_rb1.data | selectattr('name', 'equalto', "ANSIBLE_TEST_1_1") | list }}
+        rb_want_content: |
+          HTTP/1.0 503 Service Unavailable
+          Content-Type: text/html
+          Cache-Control: no-cache
+          Connection: close
+
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>Service Unavailable</title>
+          </head>
+          <body>
+            <h1>Service Temporarily Unavailable</h1>
+            <p>We're experiencing technical difficulties.</p>
+          </body>
+          </html>
+      failed_when: >
+        opn_rb1.failed or
+        rb_entry | length != 1 or
+        (rb_entry[0]['code'] | string) != "x503" or
+        (rb_entry[0]['content'] | string) != rb_want_content or
+        (rb_entry[0]['description'] | string) != "Custom 503 Service Unavailable page"
+      when: not ansible_check_mode
+
     - name: Cleanup Error file 1
       oxlorg.opnsense.haproxy_errorfile:
         name: 'ANSIBLE_TEST_1_1'
@@ -351,3 +424,12 @@
         name: 'ANSIBLE_TEST_1_4'
         state: 'absent'
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'haproxy_errorfile'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

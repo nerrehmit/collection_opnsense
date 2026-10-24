@@ -10,6 +10,12 @@
       ssl_verify: false
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'dnsmasq_general'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
         target: 'dnsmasq_general'
@@ -120,6 +126,38 @@
         not opn2.changed
       when: not ansible_check_mode
 
+    - name: Changing - nothing changed
+      oxlorg.opnsense.dnsmasq_general:
+        enabled: true
+        interfaces: ['opt1']
+        strictbind: true
+        port: 2054
+        dnssec: true
+        resolve_etc_hosts: false
+        log_queries: false
+        ident: true
+        strict_order: true
+        domain_needed: false
+        forward_private_reverse: false
+        regdhcp: true
+        regdhcpdomain: 'test2.domain'
+        regdhcpstatic: false
+        dhcpfirst: true
+      register: opn_rr1
+      failed_when: >
+        opn_rr1.failed or
+        opn_rr1.changed
+      when: not ansible_check_mode
+
     - name: Cleanup
       oxlorg.opnsense.dnsmasq_general:
         enabled: false
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'dnsmasq_general'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

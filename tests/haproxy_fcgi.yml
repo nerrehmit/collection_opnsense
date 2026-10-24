@@ -16,6 +16,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'haproxy_fcgi'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn_pre1
@@ -138,6 +144,40 @@
         not opn9.changed
       when: not ansible_check_mode
 
+    - name: Changing FCGI application settings - nothing changed
+      oxlorg.opnsense.haproxy_fcgi:
+        name: 'ANSIBLE_TEST_1_1'
+        description: 'Modified test PHP-FPM application'
+        enabled: true
+        docroot: '/var/www/html/public'
+        index: 'index.php'
+        path_info: '^(/.+\.php)(/.*)?$'
+        log_stderr: true
+        keep_conn: true
+        get_values: true
+        mpxs_conns: false
+        max_reqs: 200
+      register: opn_rr1
+      failed_when: >
+        opn_rr1.failed or
+        opn_rr1.changed
+      when: not ansible_check_mode
+
+    - name: Changing FCGI application settings - read back
+      oxlorg.opnsense.list:
+        target: 'haproxy_fcgi'
+      register: opn_rb1
+      vars:
+        rb_entry: >-
+          {{ opn_rb1.data | selectattr('name', 'equalto', "ANSIBLE_TEST_1_1") | list }}
+      failed_when: >
+        opn_rb1.failed or
+        rb_entry | length != 1 or
+        (rb_entry[0]['description'] | string) != "Modified test PHP-FPM application" or
+        (rb_entry[0]['docroot'] | string) != "/var/www/html/public" or
+        (rb_entry[0]['get_values'] | string | lower) not in ['true', '1', 'yes', 'on']
+      when: not ansible_check_mode
+
     - name: Disabling HAProxy FCGI application
       oxlorg.opnsense.haproxy_fcgi:
         name: 'ANSIBLE_TEST_1_1'
@@ -233,3 +273,12 @@
         - 'ANSIBLE_TEST_FCGI_ACTION_1'
         - 'ANSIBLE_TEST_FCGI_ACTION_2'
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'haproxy_fcgi'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

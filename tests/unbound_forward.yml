@@ -21,6 +21,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'unbound_forward'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn10
@@ -115,6 +121,32 @@
         not opn12.changed
       when: not ansible_check_mode
 
+    - name: Channging 2 - tcp-forward - nothing changed
+      oxlorg.opnsense.unbound_forward:
+        domain: 'fwd.opnsense.test.oxlorg.net'
+        target: '1.1.1.2'
+        forward_tcp: true
+        reload: false  # speed
+      register: opn_rr1
+      failed_when: >
+        opn_rr1.failed or
+        opn_rr1.changed
+      when: not ansible_check_mode
+
+    # list returns this target with the API field names
+    - name: Channging 2 - tcp-forward - read back
+      oxlorg.opnsense.list:
+        target: 'unbound_forward'
+      register: opn_rb1
+      vars:
+        rb_entry: >-
+          {{ opn_rb1.data | selectattr('domain', 'equalto', "fwd.opnsense.test.oxlorg.net") | selectattr('server', 'equalto', "1.1.1.2") | list }}
+      failed_when: >
+        opn_rb1.failed or
+        rb_entry | length != 1 or
+        (rb_entry[0]['forward_tcp_upstream'] | string | lower) not in ['true', '1', 'yes', 'on']
+      when: not ansible_check_mode
+
     - name: Removing 2
       oxlorg.opnsense.unbound_forward:
         domain: 'fwd.opnsense.test.oxlorg.net'
@@ -177,3 +209,12 @@
         'data' not in opn2 or
         opn2.data | length != 0
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'unbound_forward'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

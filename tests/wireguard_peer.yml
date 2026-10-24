@@ -4,6 +4,11 @@
   hosts: localhost
   gather_facts: no
   module_defaults:
+    oxlorg.opnsense.service:
+      firewall: "{{ lookup('ansible.builtin.env', 'TEST_FIREWALL') }}"
+      api_credential_file: "{{ lookup('ansible.builtin.env', 'TEST_API_KEY') }}"
+      ssl_verify: false
+
     oxlorg.opnsense.wireguard_peer:
       firewall: "{{ lookup('ansible.builtin.env', 'TEST_FIREWALL') }}"
       api_credential_file: "{{ lookup('ansible.builtin.env', 'TEST_API_KEY') }}"
@@ -25,6 +30,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'wireguard_peer'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn10
@@ -118,6 +129,50 @@
       failed_when: >
         opn7.failed or
         not opn7.changed
+      when: not ansible_check_mode
+
+    - name: Reload - service status before
+      oxlorg.opnsense.service:
+        name: 'wireguard'
+        action: 'status'
+      register: opn_rl_svc14
+      when: not ansible_check_mode
+
+    - name: Enabling 1 - changed with reload
+      oxlorg.opnsense.wireguard_peer:
+        name: 'ANSIBLE_TEST_1_1'
+        target: 'wg.test.oxlorg.net'
+        allowed_ips: ['192.168.0.1/32']
+        public_key: "{{ test.pub1 }}"
+        reload: true
+        enabled: false
+      register: opn_rl14_1
+      failed_when: >
+        opn_rl14_1.failed or
+        not opn_rl14_1.changed
+      when: not ansible_check_mode
+
+    - name: Enabling 1 - changed back with reload
+      oxlorg.opnsense.wireguard_peer:
+        name: 'ANSIBLE_TEST_1_1'
+        target: 'wg.test.oxlorg.net'
+        allowed_ips: ['192.168.0.1/32']
+        public_key: "{{ test.pub1 }}"
+        reload: true
+      register: opn_rl14_2
+      failed_when: >
+        opn_rl14_2.failed or
+        not opn_rl14_2.changed
+      when: not ansible_check_mode
+
+    - name: Reload - service status unchanged
+      oxlorg.opnsense.service:
+        name: 'wireguard'
+        action: 'status'
+      register: opn_rl_svc14_after
+      failed_when: >
+        opn_rl_svc14_after.failed or
+        (opn_rl_svc14_after.data.status | default('')) != (opn_rl_svc14.data.status | default(''))
       when: not ansible_check_mode
 
     - name: Adding 2
@@ -274,3 +329,12 @@
         name: 'ANSIBLE_TEST_2_1'
         state: 'absent'
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'wireguard_peer'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

@@ -16,6 +16,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'webproxy_remote_acl'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn_pre1
@@ -96,6 +102,21 @@
       failed_when: >
         opn3.failed or
         opn3.changed
+      when: not ansible_check_mode
+
+    - name: Changing 1 - read back
+      oxlorg.opnsense.list:
+        target: 'webproxy_remote_acl'
+      register: opn_rb1
+      vars:
+        rb_entry: >-
+          {{ opn_rb1.data | selectattr('file', 'equalto', "ANSIBLETEST1") | list }}
+      failed_when: >
+        opn_rb1.failed or
+        rb_entry | length != 1 or
+        (rb_entry[0]['description'] | string) != "test_new" or
+        (rb_entry[0]['url'] | string) != "https://test.lan/rac2" or
+        (rb_entry[0]['verify_ssl'] | string | lower) not in ['false', '0', 'no', 'off', '']
       when: not ansible_check_mode
 
     - name: Disabling 1
@@ -181,3 +202,12 @@
         opn9.failed or
         opn9.data | length != 0
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'webproxy_remote_acl'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

@@ -16,6 +16,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'webproxy_acl'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn_pre1
@@ -38,6 +44,23 @@
       failed_when: >
         opn1.failed or
         not opn1.changed
+
+    - name: Configuring - nothing changed
+      oxlorg.opnsense.webproxy_acl:
+        allow: ['192.168.0.0/24', '172.16.0.5']
+        exclude: ['192.168.2.0/28', '172.16.1.5']
+        banned: ['172.16.3.0/24']
+        exclude_domains: ['oxlorg.net']
+        block_domains: ['oxlorg.com']
+        block_user_agents: ['test1']
+        block_mime_types: ['video/flv']
+        ports_tcp: ['80:http', '21:ftp']
+        ports_ssl: ['443:https', '5433:random']
+      register: opn_rr1
+      failed_when: >
+        opn_rr1.failed or
+        opn_rr1.changed
+      when: not ansible_check_mode
 
     - name: Changing 1
       oxlorg.opnsense.webproxy_acl:
@@ -76,3 +99,12 @@
     - name: Cleanup
       oxlorg.opnsense.webproxy_acl:
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'webproxy_acl'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

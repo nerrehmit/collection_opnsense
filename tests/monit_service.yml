@@ -19,6 +19,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'monit_service'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn10
@@ -123,6 +129,50 @@
         opn13.changed
       when: not ansible_check_mode
 
+    - name: Reload - service status before
+      oxlorg.opnsense.service:
+        name: 'monit'
+        action: 'status'
+      register: opn_rl_svc13
+      when: not ansible_check_mode
+
+    - name: Adding 2 - changed with reload
+      oxlorg.opnsense.monit_service:
+        name: 'ANSIBLE_TEST_1_2'
+        type: 'network'
+        address: '192.168.0.1'
+        description: 'test1'
+        reload: true
+        enabled: false
+      register: opn_rl13_1
+      failed_when: >
+        opn_rl13_1.failed or
+        not opn_rl13_1.changed
+      when: not ansible_check_mode
+
+    - name: Adding 2 - changed back with reload
+      oxlorg.opnsense.monit_service:
+        name: 'ANSIBLE_TEST_1_2'
+        type: 'network'
+        address: '192.168.0.1'
+        description: 'test1'
+        reload: true
+      register: opn_rl13_2
+      failed_when: >
+        opn_rl13_2.failed or
+        not opn_rl13_2.changed
+      when: not ansible_check_mode
+
+    - name: Reload - service status unchanged
+      oxlorg.opnsense.service:
+        name: 'monit'
+        action: 'status'
+      register: opn_rl_svc13_after
+      failed_when: >
+        opn_rl_svc13_after.failed or
+        (opn_rl_svc13_after.data.status | default('')) != (opn_rl_svc13.data.status | default(''))
+      when: not ansible_check_mode
+
     - name: Removing 2
       oxlorg.opnsense.monit_service:
         name: 'ANSIBLE_TEST_1_2'
@@ -218,3 +268,12 @@
         'data' not in opn2 or
         opn2.data | length != default_svc_count
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'monit_service'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

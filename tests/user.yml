@@ -13,6 +13,12 @@
       target: 'user'
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'user'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn_pre1
@@ -291,6 +297,21 @@
         opn19.changed
       when: not ansible_check_mode
 
+    - name: Changing 1 - read back
+      oxlorg.opnsense.list:
+        target: 'user'
+      register: opn_rb1
+      vars:
+        rb_entry: >-
+          {{ opn_rb1.data | selectattr('name', 'equalto', "ANSIBLE_TEST_2_1") | list }}
+        rb_membership: >-
+          {{ rb_entry[0]['membership'].split(',') if rb_entry[0]['membership'] is string else rb_entry[0]['membership'] }}
+      failed_when: >
+        opn_rb1.failed or
+        rb_entry | length != 1 or
+        (rb_membership | map('string') | sort | join(',')) != ""
+      when: not ansible_check_mode
+
     - name: Cleanup
       oxlorg.opnsense.user:
         name: '{{ item }}'
@@ -307,3 +328,12 @@
         - ANSIBLE_TEST_2_1
         - ANSIBLE_TEST_2_2
       diff: false
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'user'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

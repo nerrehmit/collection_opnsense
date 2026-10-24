@@ -16,6 +16,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'frr_ospf_route_map'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn_pre1
@@ -68,6 +74,31 @@
       failed_when: >
         opn9.failed or
         not opn9.changed
+
+    - name: Changing 1 - nothing changed
+      oxlorg.opnsense.frr_ospf_route_map:
+        name: 'ANSIBLE_TEST_1_1'
+        id: 45
+        action: 'deny'
+      register: opn_rr1
+      failed_when: >
+        opn_rr1.failed or
+        opn_rr1.changed
+      when: not ansible_check_mode
+
+    - name: Changing 1 - read back
+      oxlorg.opnsense.list:
+        target: 'frr_ospf_route_map'
+      register: opn_rb1
+      vars:
+        rb_entry: >-
+          {{ opn_rb1.data | selectattr('name', 'equalto', "ANSIBLE_TEST_1_1") | list }}
+      failed_when: >
+        opn_rb1.failed or
+        rb_entry | length != 1 or
+        (rb_entry[0]['action'] | string) != "deny" or
+        (rb_entry[0]['id'] | string) != "45"
+      when: not ansible_check_mode
 
     - name: Disabling 1
       oxlorg.opnsense.frr_ospf_route_map:
@@ -225,3 +256,12 @@
         'data' not in opn_clean2 or
         opn_clean2.data | length != 0
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'frr_ospf_route_map'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

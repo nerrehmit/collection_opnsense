@@ -18,6 +18,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'dhcrelay_destination'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn1
@@ -80,6 +86,31 @@
         opn5.changed
       when: not ansible_check_mode
 
+    - name: Adding 2 - changed with reload
+      oxlorg.opnsense.dhcrelay_destination:
+        name: 'ANSIBLE_TEST_1_2'
+        reload: true
+        server:
+          - "192.168.254.252"
+      register: opn_rl22_1
+      failed_when: >
+        opn_rl22_1.failed or
+        not opn_rl22_1.changed
+      when: not ansible_check_mode
+
+    - name: Adding 2 - changed back with reload
+      oxlorg.opnsense.dhcrelay_destination:
+        name: 'ANSIBLE_TEST_1_2'
+        server:
+          - '192.168.254.252'
+          - '192.168.254.253'
+        reload: true
+      register: opn_rl22_2
+      failed_when: >
+        opn_rl22_2.failed or
+        not opn_rl22_2.changed
+      when: not ansible_check_mode
+
     - name: Removing 2
       oxlorg.opnsense.dhcrelay_destination:
         name: 'ANSIBLE_TEST_1_2'
@@ -111,3 +142,12 @@
         'data' not in opn8 or
         opn8.data | length != 0
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'dhcrelay_destination'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

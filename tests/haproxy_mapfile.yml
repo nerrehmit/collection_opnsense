@@ -16,6 +16,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'haproxy_mapfile'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn_pre1
@@ -101,6 +107,24 @@
         opn5.changed
       when: not ansible_check_mode
 
+    - name: Changing Map file content - read back
+      oxlorg.opnsense.list:
+        target: 'haproxy_mapfile'
+      register: opn_rb1
+      vars:
+        rb_entry: >-
+          {{ opn_rb1.data | selectattr('name', 'equalto', "ANSIBLE_TEST_1_1") | list }}
+        rb_want_content: |
+          www.example.com backend_web_v2
+          api.example.com backend_api_v2
+          new.example.com backend_new
+      failed_when: >
+        opn_rb1.failed or
+        rb_entry | length != 1 or
+        (rb_entry[0]['content'] | string) != rb_want_content or
+        (rb_entry[0]['description'] | string) != "Modified test map file for domain routing"
+      when: not ansible_check_mode
+
     - name: Cleanup
       oxlorg.opnsense.haproxy_mapfile:
         name: "{{ item }}"
@@ -110,3 +134,12 @@
         - 'ANSIBLE_TEST_1_1'
         - 'ANSIBLE_TEST_1_2'
         - 'ANSIBLE_TEST_1_3'
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'haproxy_mapfile'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

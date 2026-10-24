@@ -16,6 +16,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'haproxy_backend'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn_pre1
@@ -144,6 +150,21 @@
         opn8.failed or opn8.changed
       when: not ansible_check_mode
 
+    - name: Changing Backend settings - read back
+      oxlorg.opnsense.list:
+        target: 'haproxy_backend'
+      register: opn_rb1
+      vars:
+        rb_entry: >-
+          {{ opn_rb1.data | selectattr('name', 'equalto', "ANSIBLE_TEST_1_1") | list }}
+      failed_when: >
+        opn_rb1.failed or
+        rb_entry | length != 1 or
+        (rb_entry[0]['algorithm'] | string) != "uri" or
+        (rb_entry[0]['description'] | string) != "Modified test backend for web servers" or
+        (rb_entry[0]['health_check_enabled'] | string | lower) not in ['false', '0', 'no', 'off', '']
+      when: not ansible_check_mode
+
     - name: Cleanup Backends
       oxlorg.opnsense.haproxy_backend:
         name: "{{ item }}"
@@ -162,3 +183,12 @@
         address: '192.168.1.10'
         state: 'absent'
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'haproxy_backend'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

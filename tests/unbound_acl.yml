@@ -16,6 +16,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'unbound_acl'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn_pre1
@@ -84,6 +90,19 @@
         opn2.failed or
         not opn2.changed
 
+    - name: Changing 1 - nothing changed
+      oxlorg.opnsense.unbound_acl:
+        name: 'ANSIBLE_TEST_1_1'
+        action: 'deny'
+        networks: ['192.168.0.0/25']
+        description: 'Deny access'
+        reload: false  # speed
+      register: opn_rr1
+      failed_when: >
+        opn_rr1.failed or
+        opn_rr1.changed
+      when: not ansible_check_mode
+
     - name: Changing 1 - more
       oxlorg.opnsense.unbound_acl:
         name: 'ANSIBLE_TEST_1_1'
@@ -95,6 +114,34 @@
       failed_when: >
         opn10.failed or
         not opn10.changed
+
+    - name: Changing 1 - more - nothing changed
+      oxlorg.opnsense.unbound_acl:
+        name: 'ANSIBLE_TEST_1_1'
+        action: 'deny'
+        networks: ['10.10.0.0/29', '192.168.0.0/25']
+        description: 'Deny access'
+        reload: false  # speed
+      register: opn_rr2
+      failed_when: >
+        opn_rr2.failed or
+        opn_rr2.changed
+      when: not ansible_check_mode
+
+    - name: Changing 1 - more - read back
+      oxlorg.opnsense.list:
+        target: 'unbound_acl'
+      register: opn_rb1
+      vars:
+        rb_entry: >-
+          {{ opn_rb1.data | selectattr('name', 'equalto', "ANSIBLE_TEST_1_1") | list }}
+        rb_networks: >-
+          {{ rb_entry[0]['networks'].split(',') if rb_entry[0]['networks'] is string else rb_entry[0]['networks'] }}
+      failed_when: >
+        opn_rb1.failed or
+        rb_entry | length != 1 or
+        (rb_networks | map('string') | sort | join(',')) != "10.10.0.0/29,192.168.0.0/25"
+      when: not ansible_check_mode
 
     - name: Disabling 1
       oxlorg.opnsense.unbound_acl:
@@ -199,3 +246,12 @@
         'data' not in opn_clean1 or
         opn_clean1.data | length != 0
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'unbound_acl'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

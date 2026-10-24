@@ -16,6 +16,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'haproxy_frontend'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn_pre1
@@ -183,6 +189,23 @@
         opn8.failed or opn8.changed
       when: not ansible_check_mode
 
+    - name: Changing Frontend settings - read back
+      oxlorg.opnsense.list:
+        target: 'haproxy_frontend'
+      register: opn_rb1
+      vars:
+        rb_entry: >-
+          {{ opn_rb1.data | selectattr('name', 'equalto', "ANSIBLE_TEST_1_1_NO_BACKEND") | list }}
+        rb_bind: >-
+          {{ rb_entry[0]['bind'].split(',') if rb_entry[0]['bind'] is string else rb_entry[0]['bind'] }}
+      failed_when: >
+        opn_rb1.failed or
+        rb_entry | length != 1 or
+        (rb_bind | map('string') | sort | join(',')) != "127.0.0.1:8083,127.0.0.1:8084" or
+        (rb_entry[0]['description'] | string) != "Modified test frontend for HTTP" or
+        (rb_entry[0]['forward_for'] | string | lower) not in ['true', '1', 'yes', 'on']
+      when: not ansible_check_mode
+
     - name: Cleanup Frontends
       oxlorg.opnsense.haproxy_frontend:
         name: "{{ item.n }}"
@@ -203,3 +226,12 @@
         name: 'ANSIBLE_TEST_BACKEND_1'
         state: 'absent'
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'haproxy_frontend'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

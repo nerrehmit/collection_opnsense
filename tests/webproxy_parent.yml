@@ -16,6 +16,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'webproxy_parent'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn_pre1
@@ -59,6 +65,21 @@
         opn1.failed or
         not opn1.changed
 
+    - name: Configuring - nothing changed
+      oxlorg.opnsense.webproxy_parent:
+        auth: true
+        host: '192.168.0.1'
+        port: 1000
+        user: 'test'
+        password: 'secret'
+        local_ips: ['192.168.10.0/24', '192.168.2.0/29']
+        local_domains: ['oxlorg.lan']
+      register: opn_rr1
+      failed_when: >
+        opn_rr1.failed or
+        opn_rr1.changed
+      when: not ansible_check_mode
+
     - name: Changing 1
       oxlorg.opnsense.webproxy_parent:
         auth: true
@@ -72,6 +93,21 @@
       failed_when: >
         opn2.failed or
         not opn2.changed
+      when: not ansible_check_mode
+
+    - name: Changing 1 - nothing changed
+      oxlorg.opnsense.webproxy_parent:
+        auth: true
+        host: '192.168.0.10'
+        port: 1500
+        user: 'test'
+        password: 'secret_new'
+        local_ips: ['192.168.10.0/24', '192.168.3.0/29']
+        local_domains: ['oxlorg.lan']
+      register: opn_rr2
+      failed_when: >
+        opn_rr2.failed or
+        opn_rr2.changed
       when: not ansible_check_mode
 
     - name: Disabling 1
@@ -125,3 +161,12 @@
       oxlorg.opnsense.webproxy_parent:
         enabled: false
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'webproxy_parent'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

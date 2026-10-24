@@ -4,6 +4,11 @@
   hosts: localhost
   gather_facts: no
   module_defaults:
+    oxlorg.opnsense.list:
+      firewall: "{{ lookup('ansible.builtin.env', 'TEST_FIREWALL') }}"
+      api_credential_file: "{{ lookup('ansible.builtin.env', 'TEST_API_KEY') }}"
+      ssl_verify: false
+
     oxlorg.opnsense.alias:
       firewall: "{{ lookup('ansible.builtin.env', 'TEST_FIREWALL') }}"
       api_credential_file: "{{ lookup('ansible.builtin.env', 'TEST_API_KEY') }}"
@@ -13,6 +18,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'alias'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Removing - does not exist
       oxlorg.opnsense.alias:
         name: 'ANSIBLE_TEST_1_1'
@@ -54,6 +65,39 @@
       failed_when: >
         not opn4.changed or
         opn4.failed
+
+    - name: Changing - nothing changed
+      oxlorg.opnsense.alias:
+        name: 'ANSIBLE_TEST_1_1'
+        content: ['1.1.1.2', '1.1.1.3']
+      register: opn_rr1
+      failed_when: >
+        opn_rr1.failed or
+        opn_rr1.changed
+      when: not ansible_check_mode
+
+    - name: Changing - changed with reload
+      oxlorg.opnsense.alias:
+        name: 'ANSIBLE_TEST_1_1'
+        content: ['1.1.1.2', '1.1.1.3']
+        reload: true
+        enabled: false
+      register: opn_rl1_1
+      failed_when: >
+        opn_rl1_1.failed or
+        not opn_rl1_1.changed
+      when: not ansible_check_mode
+
+    - name: Changing - changed back with reload
+      oxlorg.opnsense.alias:
+        name: 'ANSIBLE_TEST_1_1'
+        content: ['1.1.1.2', '1.1.1.3']
+        reload: true
+      register: opn_rl1_2
+      failed_when: >
+        opn_rl1_2.failed or
+        not opn_rl1_2.changed
+      when: not ansible_check_mode
 
     - name: Changing to other type - invalid
       oxlorg.opnsense.alias:
@@ -120,6 +164,11 @@
   hosts: localhost
   gather_facts: no
   module_defaults:
+    oxlorg.opnsense.list:
+      firewall: "{{ lookup('ansible.builtin.env', 'TEST_FIREWALL') }}"
+      api_credential_file: "{{ lookup('ansible.builtin.env', 'TEST_API_KEY') }}"
+      ssl_verify: false
+
     oxlorg.opnsense.alias:
       firewall: "{{ lookup('ansible.builtin.env', 'TEST_FIREWALL') }}"
       api_credential_file: "{{ lookup('ansible.builtin.env', 'TEST_API_KEY') }}"
@@ -344,6 +393,18 @@
         not opn15.changed
       when: not ansible_check_mode
 
+    - name: Updating urltable update-frequency - nothing changed
+      oxlorg.opnsense.alias:
+        name: 'ANSIBLE_TEST_1_2_URLTABLE1'
+        type: 'urltable'
+        updatefreq_days: 6.5
+        content: 'https://www.spamhaus.org/drop/drop.txt'
+      register: opn_rr2
+      failed_when: >
+        opn_rr2.failed or
+        opn_rr2.changed
+      when: not ansible_check_mode
+
     - name: Adding urltable with auth
       oxlorg.opnsense.alias:
         name: 'ANSIBLE_TEST_1_2_URLTABLE1'
@@ -371,6 +432,21 @@
       failed_when: >
         opnurlauth.failed or
         opnurlauth.changed
+      when: not ansible_check_mode
+
+    - name: Adding urltable with auth - read back
+      oxlorg.opnsense.list:
+        target: 'alias'
+      register: opn_rb1
+      vars:
+        rb_entry: >-
+          {{ opn_rb1.data | selectattr('name', 'equalto', "ANSIBLE_TEST_1_2_URLTABLE1") | list }}
+      failed_when: >
+        opn_rb1.failed or
+        rb_entry | length != 1 or
+        (rb_entry[0]['updatefreq_days'] | string) != "2" or
+        (rb_entry[0]['url_auth_type'] | string) != "Basic" or
+        (rb_entry[0]['url_username'] | string) != "test"
       when: not ansible_check_mode
 
     - name: Adding invalid urltable
@@ -541,3 +617,12 @@
       loop:
         - 'ANSIBLE_TEST_1_3_1'
         - 'ANSIBLE_TEST_1_3_2'
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'alias'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

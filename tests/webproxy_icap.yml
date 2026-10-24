@@ -16,6 +16,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'webproxy_icap'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn_pre1
@@ -42,6 +48,21 @@
       failed_when: >
         opn1.failed or
         not opn1.changed
+
+    - name: Configuring - nothing changed
+      oxlorg.opnsense.webproxy_icap:
+        response_url: 'icap://av.lan:1344/avscan'
+        ttl: 70
+        send_username: true
+        send_client_ip: true
+        encode_username: true
+        preview_size: 3072
+        exclude: ['oxlorg.net']
+      register: opn_rr1
+      failed_when: >
+        opn_rr1.failed or
+        opn_rr1.changed
+      when: not ansible_check_mode
 
     - name: Changing 1
       oxlorg.opnsense.webproxy_icap:
@@ -124,3 +145,12 @@
       oxlorg.opnsense.webproxy_icap:
         enabled: false
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'webproxy_icap'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode
