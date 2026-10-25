@@ -157,6 +157,7 @@
       failed_when: >
         opn3.failed or
         opn3.changed
+      when: not ansible_check_mode
 
     - name: Changing 1 - read back
       oxlorg.opnsense.list:
@@ -275,6 +276,7 @@
       failed_when: >
         opn9.failed or
         opn9.changed
+      when: not ansible_check_mode
 
     - name: Adding 3
       oxlorg.opnsense.acme_certificate:
@@ -314,6 +316,7 @@
       failed_when: >
         opn12.failed or
         opn12.changed
+      when: not ansible_check_mode
 
     - name: Listing
       oxlorg.opnsense.list:
