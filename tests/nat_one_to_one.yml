@@ -17,6 +17,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'nat_one_to_one'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn_pre1
@@ -64,6 +70,58 @@
       failed_when: >
         opn2.failed or
         not opn2.changed
+
+    - name: Changing 1 - nothing changed
+      oxlorg.opnsense.one_to_one:
+        interface: 'lan'
+        external: '1.2.3.4'
+        source_net: '192.168.0.2'
+        description: 'ANSIBLE_TEST_1_1'
+      register: opn_rr1
+      failed_when: >
+        opn_rr1.failed or
+        opn_rr1.changed
+      when: not ansible_check_mode
+
+    - name: Changing 1 - read back
+      oxlorg.opnsense.list:
+        target: 'nat_one_to_one'
+      register: opn_rb1
+      vars:
+        rb_entry: >-
+          {{ opn_rb1.data | selectattr('interface', 'equalto', "lan") | selectattr('external', 'equalto', "1.2.3.4") | list }}
+      failed_when: >
+        opn_rb1.failed or
+        rb_entry | length != 1 or
+        (rb_entry[0]['source_net'] | string) != "192.168.0.2"
+      when: not ansible_check_mode
+
+    - name: Changing 1 - changed with reload
+      oxlorg.opnsense.one_to_one:
+        interface: 'lan'
+        external: '1.2.3.4'
+        source_net: '192.168.0.2'
+        description: 'ANSIBLE_TEST_1_1'
+        reload: true
+        enabled: false
+      register: opn_rl5_1
+      failed_when: >
+        opn_rl5_1.failed or
+        not opn_rl5_1.changed
+      when: not ansible_check_mode
+
+    - name: Changing 1 - changed back with reload
+      oxlorg.opnsense.one_to_one:
+        interface: 'lan'
+        external: '1.2.3.4'
+        source_net: '192.168.0.2'
+        description: 'ANSIBLE_TEST_1_1'
+        reload: true
+      register: opn_rl5_2
+      failed_when: >
+        opn_rl5_2.failed or
+        not opn_rl5_2.changed
+      when: not ansible_check_mode
 
     - name: Disabling 1
       oxlorg.opnsense.one_to_one:
@@ -163,3 +221,12 @@
         'data' not in opn_clean1 or
         opn_clean1.data | length != 0
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'nat_one_to_one'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

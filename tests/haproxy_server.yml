@@ -16,6 +16,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'haproxy_server'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn_pre1
@@ -126,6 +132,69 @@
         opn8.failed or opn8.changed
       when: not ansible_check_mode
 
+    - name: Changing Server settings - read back
+      oxlorg.opnsense.list:
+        target: 'haproxy_server'
+      register: opn_rb1
+      vars:
+        rb_entry: >-
+          {{ opn_rb1.data | selectattr('name', 'equalto', "ANSIBLE_TEST_1_1") | list }}
+      failed_when: >
+        opn_rb1.failed or
+        rb_entry | length != 1 or
+        (rb_entry[0]['address'] | string) != "192.168.1.11" or
+        (rb_entry[0]['description'] | string) != "Modified test web server 1" or
+        (rb_entry[0]['port'] | string) != "8080"
+      when: not ansible_check_mode
+
+    - name: Reload - service status before
+      oxlorg.opnsense.service:
+        name: 'haproxy'
+        action: 'status'
+      register: opn_rl_svc25
+      when: not ansible_check_mode
+
+    - name: Changing Server settings - changed with reload
+      oxlorg.opnsense.haproxy_server:
+        name: 'ANSIBLE_TEST_1_1'
+        description: 'Modified test web server 1'
+        address: '192.168.1.11'
+        port: 8080
+        weight: 150
+        mode: 'active'
+        reload: true
+        enabled: false
+      register: opn_rl25_1
+      failed_when: >
+        opn_rl25_1.failed or
+        not opn_rl25_1.changed
+      when: not ansible_check_mode
+
+    - name: Changing Server settings - changed back with reload
+      oxlorg.opnsense.haproxy_server:
+        name: 'ANSIBLE_TEST_1_1'
+        description: 'Modified test web server 1'
+        address: '192.168.1.11'
+        port: 8080
+        weight: 150
+        mode: 'active'
+        reload: true
+      register: opn_rl25_2
+      failed_when: >
+        opn_rl25_2.failed or
+        not opn_rl25_2.changed
+      when: not ansible_check_mode
+
+    - name: Reload - service status unchanged
+      oxlorg.opnsense.service:
+        name: 'haproxy'
+        action: 'status'
+      register: opn_rl_svc25_after
+      failed_when: >
+        opn_rl_svc25_after.failed or
+        (opn_rl_svc25_after.data.status | default('')) != (opn_rl_svc25.data.status | default(''))
+      when: not ansible_check_mode
+
     - name: Cleanup
       oxlorg.opnsense.haproxy_server:
         name: "{{ item }}"
@@ -137,3 +206,12 @@
         - 'ANSIBLE_TEST_1_3'
         - 'ANSIBLE_TEST_1_4'
         - 'ANSIBLE_TEST_1_5'
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'haproxy_server'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

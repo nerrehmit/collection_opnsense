@@ -16,6 +16,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'haproxy_general_tuning'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn_pre1
@@ -49,6 +55,22 @@
       failed_when: >
         opn1.failed or
         not opn1.changed
+
+    - name: Configuring basic tuning settings - nothing changed
+      oxlorg.opnsense.haproxy_general_tuning:
+        root: false
+        max_connections: 10000
+        nbthread: 4
+        resolvers_prefer: 'ipv4'
+        ssl_server_verify: 'required'
+        max_dh_size: 2048
+        buffer_size: 32768
+        spread_checks: 5
+      register: opn_rr1
+      failed_when: >
+        opn_rr1.failed or
+        opn_rr1.changed
+      when: not ansible_check_mode
 
     - name: Changing tuning settings
       oxlorg.opnsense.haproxy_general_tuning:
@@ -89,3 +111,12 @@
       oxlorg.opnsense.haproxy_general_tuning:
         root: false
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'haproxy_general_tuning'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

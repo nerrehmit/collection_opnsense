@@ -26,6 +26,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'unbound_host_alias'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn10
@@ -201,3 +207,12 @@
         'data' not in opn2 or
         opn2.data | length != 0
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'unbound_host_alias'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

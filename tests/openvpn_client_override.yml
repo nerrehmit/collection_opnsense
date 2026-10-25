@@ -16,13 +16,19 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'openvpn_client_override'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Adding Dummy Servers
       oxlorg.opnsense.openvpn_server:
         name: 'ANSIBLE_TEST_3_1'
         server: '192.168.77.0/29'
         ca: 'OpenVPN'
         certificate: 'OpenVPN Server'
-      when: not ansible_check_mode
+      check_mode: false
 
     - name: Listing
       oxlorg.opnsense.list:
@@ -70,6 +76,38 @@
       failed_when: >
         opn9.failed or
         not opn9.changed
+      when: not ansible_check_mode
+
+    - name: Changing 1 - nothing changed
+      oxlorg.opnsense.openvpn_client_override:
+        name: 'ANSIBLE_TEST_1_1'
+        servers: 'ANSIBLE_TEST_3_1'
+        block: true
+        network_tunnel_ip4: '192.168.77.3/29'
+        network_local: ['192.168.78.128/27']
+        domain: 'test.vpn'
+        dns_servers: ['1.1.1.1', '8.8.8.8']
+      register: opn_rr1
+      failed_when: >
+        opn_rr1.failed or
+        opn_rr1.changed
+      when: not ansible_check_mode
+
+    - name: Changing 1 - read back
+      oxlorg.opnsense.list:
+        target: 'openvpn_client_override'
+      register: opn_rb1
+      vars:
+        rb_entry: >-
+          {{ opn_rb1.data | selectattr('name', 'equalto', "ANSIBLE_TEST_1_1") | list }}
+        rb_dns_servers: >-
+          {{ rb_entry[0]['dns_servers'].split(',') if rb_entry[0]['dns_servers'] is string else rb_entry[0]['dns_servers'] }}
+      failed_when: >
+        opn_rb1.failed or
+        rb_entry | length != 1 or
+        (rb_entry[0]['block'] | string | lower) not in ['true', '1', 'yes', 'on'] or
+        (rb_dns_servers | map('string') | sort | join(',')) != "1.1.1.1,8.8.8.8" or
+        (rb_entry[0]['domain'] | string) != "test.vpn"
       when: not ansible_check_mode
 
     - name: Disabling 1
@@ -176,7 +214,7 @@
       oxlorg.opnsense.openvpn_server:
         name: 'ANSIBLE_TEST_3_1'
         state: 'absent'
-      when: not ansible_check_mode
+      check_mode: false
 
     - name: Listing
       oxlorg.opnsense.list:
@@ -185,3 +223,12 @@
         'data' not in opn_post1 or
         opn_post1.data | length != 0
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'openvpn_client_override'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

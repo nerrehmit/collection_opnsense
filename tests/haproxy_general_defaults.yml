@@ -16,6 +16,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'haproxy_general_defaults'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn_pre1
@@ -47,6 +53,24 @@
         opn1.failed or
         not opn1.changed
 
+    - name: Configuring basic defaults settings - nothing changed
+      oxlorg.opnsense.haproxy_general_defaults:
+        max_connections: 2000
+        max_connections_servers: 1000
+        timeout_client: '60s'
+        timeout_connect: '10s'
+        timeout_check: '5s'
+        timeout_server: '60s'
+        retries: 5
+        redispatch: 'x2'
+        init_addr: ['last', 'libc', 'none']
+        custom_options: 'option httplog'
+      register: opn_rr1
+      failed_when: >
+        opn_rr1.failed or
+        opn_rr1.changed
+      when: not ansible_check_mode
+
     - name: Changing defaults settings
       oxlorg.opnsense.haproxy_general_defaults:
         max_connections: 4000
@@ -63,6 +87,24 @@
       failed_when: >
         opn9.failed or
         not opn9.changed
+      when: not ansible_check_mode
+
+    - name: Changing defaults settings - nothing changed
+      oxlorg.opnsense.haproxy_general_defaults:
+        max_connections: 4000
+        max_connections_servers: 2000
+        timeout_client: '120s'
+        timeout_connect: '30s'
+        timeout_check: '10s'
+        timeout_server: '120s'
+        retries: 10
+        redispatch: 'x1'
+        init_addr: ['libc', 'last']
+        custom_options: 'option tcplog'
+      register: opn_rr2
+      failed_when: >
+        opn_rr2.failed or
+        opn_rr2.changed
       when: not ansible_check_mode
 
     - name: Testing edge values
@@ -108,3 +150,12 @@
         redispatch: 'x-1'
         init_addr: ['last', 'libc']
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'haproxy_general_defaults'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

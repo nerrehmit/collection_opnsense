@@ -16,6 +16,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'haproxy_lua'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn_pre1
@@ -141,6 +147,58 @@
         opn9.failed or
         not opn9.changed
 
+    - name: Changing Lua script settings - nothing changed
+      oxlorg.opnsense.haproxy_lua:
+        name: 'ANSIBLE_TEST_1_1'
+        description: 'Modified test Lua script for authentication'
+        enabled: true
+        preload: false
+        filename_scheme: 'name'
+        content: |
+          function auth_check_v2(txn)
+            local headers = txn.http:req_get_headers()
+            local auth_header = headers["authorization"]
+            if auth_header and string.find(auth_header, "Bearer ") then
+              core.Info("Bearer token found")
+              return "AUTHORIZED"
+            else
+              core.Info("No valid bearer token")
+              return "UNAUTHORIZED"
+            end
+          end
+      register: opn_rr1
+      failed_when: >
+        opn_rr1.failed or
+        opn_rr1.changed
+      when: not ansible_check_mode
+
+    - name: Changing Lua script settings - read back
+      oxlorg.opnsense.list:
+        target: 'haproxy_lua'
+      register: opn_rb1
+      vars:
+        rb_entry: >-
+          {{ opn_rb1.data | selectattr('name', 'equalto', "ANSIBLE_TEST_1_1") | list }}
+        rb_want_content: |
+          function auth_check_v2(txn)
+            local headers = txn.http:req_get_headers()
+            local auth_header = headers["authorization"]
+            if auth_header and string.find(auth_header, "Bearer ") then
+              core.Info("Bearer token found")
+              return "AUTHORIZED"
+            else
+              core.Info("No valid bearer token")
+              return "UNAUTHORIZED"
+            end
+          end
+      failed_when: >
+        opn_rb1.failed or
+        rb_entry | length != 1 or
+        (rb_entry[0]['content'] | string) != rb_want_content or
+        (rb_entry[0]['description'] | string) != "Modified test Lua script for authentication" or
+        (rb_entry[0]['filename_scheme'] | string) != "name"
+      when: not ansible_check_mode
+
     - name: Disabling HAProxy Lua script
       oxlorg.opnsense.haproxy_lua:
         name: 'ANSIBLE_TEST_1_1'
@@ -258,3 +316,12 @@
         name: 'ANSIBLE_TEST_1_3'
         state: 'absent'
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'haproxy_lua'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

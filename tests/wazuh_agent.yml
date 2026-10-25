@@ -16,6 +16,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'wazuh_agent'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn_pre1
@@ -91,6 +97,21 @@
         not opn3.changed
       when: not ansible_check_mode
 
+    - name: Configuring - changing server - nothing changed
+      oxlorg.opnsense.wazuh_agent:
+        server_address: '10.0.0.100'
+        agent_name: 'test-agent-2'
+        protocol: 'udp'
+        port: 1515
+        debug_level: 0
+        enabled: false
+        reload: false
+      register: opn_rr1
+      failed_when: >
+        opn_rr1.failed or
+        opn_rr1.changed
+      when: not ansible_check_mode
+
     - name: Configuring - with authentication
       oxlorg.opnsense.wazuh_agent:
         server_address: '10.0.0.100'
@@ -117,8 +138,43 @@
         not opn4.changed
       when: not ansible_check_mode
 
+    - name: Configuring - with authentication - nothing changed
+      oxlorg.opnsense.wazuh_agent:
+        server_address: '10.0.0.100'
+        agent_name: 'test-agent-auth'
+        protocol: 'tcp'
+        auth_password: 'test123'
+        auth_port: 1515
+        remote_commands: true
+        syslog_programs:
+          - 'filterlog'
+          - 'suricata'
+        suricata_eve_log: true
+        rootcheck_enabled: false
+        syscollector_enabled: true
+        syscheck_enabled: false
+        active_response_enabled: true
+        active_response_remote_commands: false
+        # active_response_fw_alias_ignore:
+        #   - 'trusted_hosts'
+        reload: false
+      register: opn_rr2
+      failed_when: >
+        opn_rr2.failed or
+        opn_rr2.changed
+      when: not ansible_check_mode
+
     - name: Cleanup
       oxlorg.opnsense.wazuh_agent:
         server_address: '127.0.0.1'
         enabled: false
         reload: false
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'wazuh_agent'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

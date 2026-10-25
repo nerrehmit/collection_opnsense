@@ -16,6 +16,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'ids_user_rule'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn_pre1
@@ -96,6 +102,54 @@
         opn9.changed
       when: not ansible_check_mode
 
+    - name: Reload - service status before
+      oxlorg.opnsense.service:
+        name: 'ids'
+        action: 'status'
+      register: opn_rl_svc20
+      when: not ansible_check_mode
+
+    - name: Changing 1 - more - changed with reload
+      oxlorg.opnsense.ids_user_rule:
+        name: 'ANSIBLE_TEST_1_1'
+        source_ip: '192.168.20.1'
+        destination_ip: '1.1.0.0'
+        ssl_fingerprint: 'B5:E1:B3:70:5E:7C:FF:EB:92:C4:29:E5:5B:AC:2F:AE:70:17:E9:9E'
+        action: 'pass'
+        bypass: true
+        reload: true
+        enabled: false
+      register: opn_rl20_1
+      failed_when: >
+        opn_rl20_1.failed or
+        not opn_rl20_1.changed
+      when: not ansible_check_mode
+
+    - name: Changing 1 - more - changed back with reload
+      oxlorg.opnsense.ids_user_rule:
+        name: 'ANSIBLE_TEST_1_1'
+        source_ip: '192.168.20.1'
+        destination_ip: '1.1.0.0'
+        ssl_fingerprint: 'B5:E1:B3:70:5E:7C:FF:EB:92:C4:29:E5:5B:AC:2F:AE:70:17:E9:9E'
+        action: 'pass'
+        bypass: true
+        reload: true
+      register: opn_rl20_2
+      failed_when: >
+        opn_rl20_2.failed or
+        not opn_rl20_2.changed
+      when: not ansible_check_mode
+
+    - name: Reload - service status unchanged
+      oxlorg.opnsense.service:
+        name: 'ids'
+        action: 'status'
+      register: opn_rl_svc20_after
+      failed_when: >
+        opn_rl_svc20_after.failed or
+        (opn_rl_svc20_after.data.status | default('')) != (opn_rl_svc20.data.status | default(''))
+      when: not ansible_check_mode
+
     - name: Disabling 1
       oxlorg.opnsense.ids_user_rule:
         name: 'ANSIBLE_TEST_1_1'
@@ -160,3 +214,12 @@
         name: 'ANSIBLE_TEST_1_1'
         state: 'absent'
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'ids_user_rule'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

@@ -16,6 +16,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'haproxy_general_peers'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn_pre1
@@ -43,6 +49,21 @@
         opn1.failed or
         not opn1.changed
 
+    - name: Configuring basic peers settings - nothing changed
+      oxlorg.opnsense.haproxy_general_peers:
+        enabled: true
+        name1: 'haproxy-primary.example.com'
+        listen1: '192.168.1.10'
+        port1: 9999
+        name2: 'haproxy-secondary.example.com'
+        listen2: '192.168.1.11'
+        port2: 9999
+      register: opn_rr1
+      failed_when: >
+        opn_rr1.failed or
+        opn_rr1.changed
+      when: not ansible_check_mode
+
     - name: Changing peers settings
       oxlorg.opnsense.haproxy_general_peers:
         enabled: true
@@ -56,6 +77,21 @@
       failed_when: >
         opn9.failed or
         not opn9.changed
+
+    - name: Changing peers settings - nothing changed
+      oxlorg.opnsense.haproxy_general_peers:
+        enabled: true
+        name1: 'haproxy-node1.example.com'
+        listen1: '10.0.0.10'
+        port1: 10000
+        name2: 'haproxy-node2.example.com'
+        listen2: '10.0.0.11'
+        port2: 10000
+      register: opn_rr2
+      failed_when: >
+        opn_rr2.failed or
+        opn_rr2.changed
+      when: not ansible_check_mode
 
     - name: Disabling HAProxy peers
       oxlorg.opnsense.haproxy_general_peers:
@@ -132,3 +168,12 @@
         port1: 1024
         port2: 1024
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'haproxy_general_peers'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

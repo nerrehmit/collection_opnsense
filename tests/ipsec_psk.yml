@@ -16,6 +16,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'ipsec_psk'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Cleanup
       oxlorg.opnsense.ipsec_psk:
         identity: "{{ item }}"
@@ -124,6 +130,18 @@
         not opn11.changed
       when: not ansible_check_mode
 
+    - name: Change back - identity remote - nothing changed
+      oxlorg.opnsense.ipsec_psk:
+        identity: 'ANSIBLE@TEST2'
+        identity_remote: 'ANSIBLE@TEST2B'
+        psk: 'LSfmuw3oiksfhnf3uhfwqhfwjuhnakfuwgfjsnhfnh'
+        match_fields: 'identity_remote'
+      register: opn_rr1
+      failed_when: >
+        opn_rr1.failed or
+        opn_rr1.changed
+      when: not ansible_check_mode
+
     - name: Removing 2
       oxlorg.opnsense.ipsec_psk:
         identity: 'ANSIBLE@TEST2'
@@ -159,3 +177,12 @@
         'data' not in opn_clean1 or
         opn_clean1.data | length != 0
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'ipsec_psk'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

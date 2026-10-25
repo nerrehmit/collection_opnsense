@@ -16,6 +16,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'webproxy_general'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn_pre1
@@ -44,6 +50,22 @@
         opn1.failed or
         not opn1.changed
 
+    - name: Configuring - nothing changed
+      oxlorg.opnsense.webproxy_general:
+        errors: 'custom'
+        icp_port: 50000
+        log: true
+        log_store: true
+        log_target: 'file_json'
+        dns_servers: ['192.168.0.1', '192.168.10.1']
+        handling_forwarded_for: 'truncate'
+        suppress_version: true
+      register: opn_rr1
+      failed_when: >
+        opn_rr1.failed or
+        opn_rr1.changed
+      when: not ansible_check_mode
+
     - name: Changing 1
       oxlorg.opnsense.webproxy_general:
         errors: 'squid'
@@ -59,6 +81,23 @@
       failed_when: >
         opn9.failed or
         not opn9.changed
+      when: not ansible_check_mode
+
+    - name: Changing 1 - nothing changed
+      oxlorg.opnsense.webproxy_general:
+        errors: 'squid'
+        icp_port: 30000
+        log: true
+        log_store: true
+        log_target: 'syslog'
+        log_ignore: ['192.168.50.0/24']
+        email: 'netadmin@oxlorg.net'
+        handling_forwarded_for: 'truncate'
+        suppress_version: false
+      register: opn_rr2
+      failed_when: >
+        opn_rr2.failed or
+        opn_rr2.changed
       when: not ansible_check_mode
 
     - name: Disabling 1
@@ -118,3 +157,12 @@
       oxlorg.opnsense.webproxy_general:
         enabled: false
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'webproxy_general'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

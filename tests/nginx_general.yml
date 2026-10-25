@@ -37,6 +37,16 @@
         opn_enb3.failed or not opn_enb3.changed
       when: not ansible_check_mode
 
+    - name: Re-enable with new ban_ttl - should work and do something - nothing changed
+      oxlorg.opnsense.nginx_general:
+        enabled: true
+        ban_ttl: 10
+      register: opn_rr1
+      failed_when: >
+        opn_rr1.failed or
+        opn_rr1.changed
+      when: not ansible_check_mode
+
     - name: Disabling - should work and do something
       oxlorg.opnsense.nginx_general:
         enabled: false

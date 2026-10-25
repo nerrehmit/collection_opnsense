@@ -13,6 +13,12 @@
       target: 'privilege'
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'privilege'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn_pre1
@@ -33,6 +39,7 @@
       loop:
         - ANSIBLE_TEST_1_1
         - ANSIBLE_TEST_1_2
+      check_mode: false
 
     - name: Adding Dummy Group
       oxlorg.opnsense.group:
@@ -40,6 +47,7 @@
       loop:
         - ANSIBLE_TEST_1_1
         - ANSIBLE_TEST_1_2
+      check_mode: false
 
     - name: Granting 1
       oxlorg.opnsense.privilege:
@@ -134,7 +142,7 @@
       loop:
         - ANSIBLE_TEST_1_1
         - ANSIBLE_TEST_1_2
-      when: not ansible_check_mode
+      check_mode: false
 
     - name: Adding Dummy Group
       oxlorg.opnsense.group:
@@ -143,4 +151,13 @@
       loop:
         - ANSIBLE_TEST_1_1
         - ANSIBLE_TEST_1_2
-      when: not ansible_check_mode
+      check_mode: false
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'privilege'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

@@ -16,6 +16,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'ids_policy'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn_pre1
@@ -93,6 +99,23 @@
         opn5.changed
       when: not ansible_check_mode
 
+    # list returns this target with the API field names
+    - name: Changing 1 - read back
+      oxlorg.opnsense.list:
+        target: 'ids_policy'
+      register: opn_rb1
+      vars:
+        rb_entry: >-
+          {{ opn_rb1.data | selectattr('description', 'equalto', "ANSIBLE_TEST_1_1") | list }}
+        rb_action: >-
+          {{ rb_entry[0]['action'].split(',') if rb_entry[0]['action'] is string else rb_entry[0]['action'] }}
+      failed_when: >
+        opn_rb1.failed or
+        rb_entry | length != 1 or
+        (rb_action | map('string') | sort | join(',')) != "alert,drop" or
+        (rb_entry[0]['prio'] | string) != "2"
+      when: not ansible_check_mode
+
     - name: Disabling 1
       oxlorg.opnsense.ids_policy:
         description: 'ANSIBLE_TEST_1_1'
@@ -149,3 +172,12 @@
         description: 'ANSIBLE_TEST_1_1'
         state: absent
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'ids_policy'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

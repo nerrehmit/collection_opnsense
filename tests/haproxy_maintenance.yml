@@ -16,6 +16,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'haproxy_maintenance'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn_pre1
@@ -33,6 +39,17 @@
         opn1.failed or
         not opn1.changed
 
+    - name: Configuring maintenance jobs - nothing changed
+      oxlorg.opnsense.haproxy_maintenance:
+        sync_certs: true
+        reload_service: false
+        restart_service: false
+      register: opn_rr1
+      failed_when: >
+        opn_rr1.failed or
+        opn_rr1.changed
+      when: not ansible_check_mode
+
     - name: Changing maintenance settings
       oxlorg.opnsense.haproxy_maintenance:
         sync_certs: false
@@ -42,6 +59,17 @@
       failed_when: >
         opn2.failed or
         not opn2.changed
+
+    - name: Changing maintenance settings - nothing changed
+      oxlorg.opnsense.haproxy_maintenance:
+        sync_certs: false
+        reload_service: true
+        restart_service: false
+      register: opn_rr2
+      failed_when: >
+        opn_rr2.failed or
+        opn_rr2.changed
+      when: not ansible_check_mode
 
     - name: Enabling all maintenance jobs
       oxlorg.opnsense.haproxy_maintenance:
@@ -76,9 +104,29 @@
         not opn5.changed
       when: not ansible_check_mode
 
+    - name: Disabling all maintenance jobs - nothing changed
+      oxlorg.opnsense.haproxy_maintenance:
+        sync_certs: false
+        reload_service: false
+        restart_service: false
+      register: opn_rr3
+      failed_when: >
+        opn_rr3.failed or
+        opn_rr3.changed
+      when: not ansible_check_mode
+
     - name: Cleanup
       oxlorg.opnsense.haproxy_maintenance:
         sync_certs: false
         reload_service: false
         restart_service: false
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'haproxy_maintenance'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

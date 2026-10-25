@@ -16,6 +16,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'webproxy_pac_proxy'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn_pre1
@@ -60,6 +66,63 @@
       failed_when: >
         opn3.failed or
         opn3.changed
+      when: not ansible_check_mode
+
+    - name: Changing 1 - read back
+      oxlorg.opnsense.list:
+        target: 'webproxy_pac_proxy'
+      register: opn_rb1
+      vars:
+        rb_entry: >-
+          {{ opn_rb1.data | selectattr('name', 'equalto', "ANSIBLE_TEST_1_1") | list }}
+      failed_when: >
+        opn_rb1.failed or
+        rb_entry | length != 1 or
+        (rb_entry[0]['description'] | string) != "test_new" or
+        (rb_entry[0]['url'] | string) != "test.lan:4228"
+      when: not ansible_check_mode
+
+    - name: Reload - service status before
+      oxlorg.opnsense.service:
+        name: 'proxy'
+        action: 'status'
+      register: opn_rl_svc18
+      when: not ansible_check_mode
+
+    - name: Changing 1 - changed with reload
+      oxlorg.opnsense.webproxy_pac_proxy:
+        name: 'ANSIBLE_TEST_1_1'
+        url: 'test.lan:4228'
+        reload: true
+        timeout: 120
+        description: 'ANSIBLE_TEST_RELOAD'
+      register: opn_rl18_1
+      failed_when: >
+        opn_rl18_1.failed or
+        not opn_rl18_1.changed
+      when: not ansible_check_mode
+
+    - name: Changing 1 - changed back with reload
+      oxlorg.opnsense.webproxy_pac_proxy:
+        name: 'ANSIBLE_TEST_1_1'
+        url: 'test.lan:4228'
+        description: 'test_new'
+        reload: true
+        timeout: 120
+      register: opn_rl18_2
+      failed_when: >
+        opn_rl18_2.failed or
+        not opn_rl18_2.changed
+      when: not ansible_check_mode
+
+    - name: Reload - service status unchanged
+      oxlorg.opnsense.service:
+        name: 'proxy'
+        action: 'status'
+      register: opn_rl_svc18_after
+      failed_when: >
+        opn_rl_svc18_after.failed or
+        (opn_rl_svc18_after.data.status | default('')) != (opn_rl_svc18.data.status | default(''))
       when: not ansible_check_mode
 
     - name: Adding 2
@@ -124,3 +187,12 @@
       failed_when: >
         opn11.failed or
         opn11.changed
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'webproxy_pac_proxy'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

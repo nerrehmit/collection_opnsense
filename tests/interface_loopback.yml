@@ -16,6 +16,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'interface_loopback'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn_pre1
@@ -57,6 +63,27 @@
         opn3.changed
       when: not ansible_check_mode
 
+    - name: Adding 2 - adding another with reload
+      oxlorg.opnsense.interface_loopback:
+        reload: true
+        description: 'ANSIBLE_TEST_1_3'
+      register: opn_rl15_1
+      failed_when: >
+        opn_rl15_1.failed or
+        not opn_rl15_1.changed
+      when: not ansible_check_mode
+
+    - name: Adding 2 - removing it with reload
+      oxlorg.opnsense.interface_loopback:
+        reload: true
+        description: 'ANSIBLE_TEST_1_3'
+        state: 'absent'
+      register: opn_rl15_2
+      failed_when: >
+        opn_rl15_2.failed or
+        not opn_rl15_2.changed
+      when: not ansible_check_mode
+
     - name: Removing 2
       oxlorg.opnsense.interface_loopback:
         description: 'ANSIBLE_TEST_1_2'
@@ -91,3 +118,12 @@
         'data' not in opn_clean1 or
         opn_clean1.data | length != 0
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'interface_loopback'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

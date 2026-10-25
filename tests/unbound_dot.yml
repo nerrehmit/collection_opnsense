@@ -21,6 +21,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'unbound_dot'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing dots
       oxlorg.opnsense.list:
       register: opn10
@@ -151,6 +157,18 @@
         opn6.failed or
         not opn6.changed
 
+    - name: Changing 3 port - nothing changed
+      oxlorg.opnsense.unbound_dot:
+        target: '1.1.1.3'
+        verify: 'dot.opnsense.test.oxlorg.net'
+        port: 853
+        reload: false  # speed
+      register: opn_rr1
+      failed_when: >
+        opn_rr1.failed or
+        opn_rr1.changed
+      when: not ansible_check_mode
+
     - name: Removing 3
       oxlorg.opnsense.unbound_dot:
         target: '1.1.1.3'
@@ -187,3 +205,12 @@
         'data' not in opn2 or
         opn2.data | length != 0
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'unbound_dot'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

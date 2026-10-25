@@ -16,6 +16,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'haproxy_general_settings'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn_pre1
@@ -48,6 +54,20 @@
         opn1.failed or
         not opn1.changed
 
+    - name: Configuring basic settings - nothing changed
+      oxlorg.opnsense.haproxy_general_settings:
+        enabled: true
+        graceful_stop: true
+        hard_stop_after: 60
+        close_spread_time: 30
+        seamless_reload: true
+        show_intro: false
+      register: opn_rr1
+      failed_when: >
+        opn_rr1.failed or
+        opn_rr1.changed
+      when: not ansible_check_mode
+
     - name: Changing settings
       oxlorg.opnsense.haproxy_general_settings:
         enabled: true
@@ -60,6 +80,20 @@
       failed_when: >
         opn9.failed or
         not opn9.changed
+
+    - name: Changing settings - nothing changed
+      oxlorg.opnsense.haproxy_general_settings:
+        enabled: true
+        graceful_stop: false
+        hard_stop_after: 120
+        close_spread_time: 60
+        seamless_reload: false
+        show_intro: true
+      register: opn_rr2
+      failed_when: >
+        opn_rr2.failed or
+        opn_rr2.changed
+      when: not ansible_check_mode
 
     - name: Disabling HAProxy
       oxlorg.opnsense.haproxy_general_settings:
@@ -138,3 +172,12 @@
         seamless_reload: false
         show_intro: true
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'haproxy_general_settings'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

@@ -16,6 +16,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'ids_general'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn_pre1
@@ -85,6 +91,25 @@
         opn9.failed or
         not opn9.changed
 
+    - name: Changing 1 - nothing changed
+      oxlorg.opnsense.ids_general:
+        interfaces: ['opt1']
+        enabled: true
+        mode: 'netmap'
+        pattern_matcher: 'ac'
+        profile: 'medium'
+        local_networks: ['10.0.0.0/16']
+        log_rotate: 'daily'
+        log_retention: 10
+        syslog: true
+        syslog_output: true
+        log_level: 'info'
+      register: opn_rr1
+      failed_when: >
+        opn_rr1.failed or
+        opn_rr1.changed
+      when: not ansible_check_mode
+
     - name: Disabling 1
       oxlorg.opnsense.ids_general:
         interfaces: ['opt1']
@@ -146,3 +171,12 @@
         interfaces: ['opt1']
         enabled: false
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'ids_general'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

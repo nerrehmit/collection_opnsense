@@ -22,6 +22,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'rule'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Removing - do not exist
       oxlorg.opnsense.rule_multi:
         rules:
@@ -249,3 +255,12 @@
         'data' not in opn5 or
         opn5.data | length != 0
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'rule'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

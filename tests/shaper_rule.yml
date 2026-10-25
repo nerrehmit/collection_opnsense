@@ -16,6 +16,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'shaper_rule'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn10
@@ -97,6 +103,33 @@
       failed_when: >
         opn15.failed or
         not opn15.changed
+      when: not ansible_check_mode
+
+    - name: Changing 1 - nothing changed
+      oxlorg.opnsense.shaper_rule:
+        description: 'ANSIBLE_TEST_1_1'
+        target_queue: 'ANSIBLE_TEST_2_1'
+        protocol: 'tcp'
+        destination_port: 443
+        sequence: 50
+      register: opn_rr1
+      failed_when: >
+        opn_rr1.failed or
+        opn_rr1.changed
+      when: not ansible_check_mode
+
+    - name: Changing 1 - read back
+      oxlorg.opnsense.list:
+        target: 'shaper_rule'
+      register: opn_rb1
+      vars:
+        rb_entry: >-
+          {{ opn_rb1.data | selectattr('description', 'equalto', "ANSIBLE_TEST_1_1") | list }}
+      failed_when: >
+        opn_rb1.failed or
+        rb_entry | length != 1 or
+        (rb_entry[0]['destination_port'] | string) != "443" or
+        (rb_entry[0]['sequence'] | string) != "50"
       when: not ansible_check_mode
 
     - name: Disabling 1
@@ -238,3 +271,12 @@
         'data' not in opn2 or
         opn2.data | length != 0
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'shaper_rule'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

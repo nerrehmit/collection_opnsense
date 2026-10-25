@@ -16,6 +16,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'frr_rip'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn_pre1
@@ -44,6 +50,18 @@
         opn1.failed or
         not opn1.changed
 
+    - name: Configuring - nothing changed
+      oxlorg.opnsense.frr_rip:
+        passive_ints: ['lan']
+        redistribute: ['static']
+        networks: ['10.0.10.0/24']
+        enabled: true
+      register: opn_rr1
+      failed_when: >
+        opn_rr1.failed or
+        opn_rr1.changed
+      when: not ansible_check_mode
+
     - name: Changing
       oxlorg.opnsense.frr_rip:
         passive_ints: ['lan']
@@ -55,6 +73,19 @@
       failed_when: >
         opn9.failed or
         not opn9.changed
+
+    - name: Changing - nothing changed
+      oxlorg.opnsense.frr_rip:
+        passive_ints: ['lan']
+        redistribute: ['static', 'ospf']
+        networks: ['10.0.11.0/24']
+        metric: 6
+        enabled: true
+      register: opn_rr2
+      failed_when: >
+        opn_rr2.failed or
+        opn_rr2.changed
+      when: not ansible_check_mode
 
     - name: Disabling 1
       oxlorg.opnsense.frr_rip:
@@ -98,3 +129,12 @@
       oxlorg.opnsense.frr_rip:
         enabled: false
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'frr_rip'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

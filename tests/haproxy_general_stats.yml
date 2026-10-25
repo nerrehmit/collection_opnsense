@@ -16,6 +16,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'haproxy_general_stats'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn_pre1
@@ -68,6 +74,23 @@
         not opn1.changed
       when: not ansible_check_mode
 
+    - name: Configuring basic stats settings - nothing changed
+      oxlorg.opnsense.haproxy_general_stats:
+        enabled: true
+        port: 8823
+        remote_enabled: true
+        remote_bind: ['0.0.0.0:8823']
+        auth_enabled: true
+        users: ['admin:password123', 'monitor:monitor123']
+        allowed_users: ['stats_admin', 'stats_monitor']
+        allowed_groups: ['stats_admins', 'stats_operators']
+        custom_options: 'stats enable'
+      register: opn_rr1
+      failed_when: >
+        opn_rr1.failed or
+        opn_rr1.changed
+      when: not ansible_check_mode
+
     - name: Changing stats settings with Prometheus
       oxlorg.opnsense.haproxy_general_stats:
         enabled: true
@@ -82,6 +105,22 @@
       failed_when: >
         opn9.failed or
         not opn9.changed
+      when: not ansible_check_mode
+
+    - name: Changing stats settings with Prometheus - nothing changed
+      oxlorg.opnsense.haproxy_general_stats:
+        enabled: true
+        port: 8824
+        remote_enabled: false
+        auth_enabled: false
+        prometheus_enabled: true
+        prometheus_bind: ['*:8405', '127.0.0.1:8405']
+        prometheus_path: '/prometheus-metrics'
+        custom_options: 'stats refresh 10s'
+      register: opn_rr2
+      failed_when: >
+        opn_rr2.failed or
+        opn_rr2.changed
       when: not ansible_check_mode
 
     - name: Disabling HAProxy stats
@@ -183,3 +222,12 @@
         - 'stats_admin'
         - 'stats_monitor'
       when: not ansible_check_mode
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'haproxy_general_stats'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode

@@ -4,6 +4,11 @@
   hosts: localhost
   gather_facts: no
   module_defaults:
+    oxlorg.opnsense.list:
+      firewall: "{{ lookup('ansible.builtin.env', 'TEST_FIREWALL') }}"
+      api_credential_file: "{{ lookup('ansible.builtin.env', 'TEST_API_KEY') }}"
+      ssl_verify: false
+
     oxlorg.opnsense.rule:
       firewall: "{{ lookup('ansible.builtin.env', 'TEST_FIREWALL') }}"
       api_credential_file: "{{ lookup('ansible.builtin.env', 'TEST_API_KEY') }}"
@@ -14,6 +19,12 @@
     HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
 
   tasks:
+    - name: Check mode - listing before
+      oxlorg.opnsense.list:
+        target: 'rule'
+      register: opn_cm_before
+      when: ansible_check_mode
+
     - name: Deleting - does not exist
       oxlorg.opnsense.rule:
         source_net: '192.168.0.0/24'
@@ -61,6 +72,19 @@
         not opn3.changed
       when: not ansible_check_mode
 
+    - name: Updating - nothing changed
+      oxlorg.opnsense.rule:
+        source_net: '192.168.0.0/24'
+        destination_net: '192.168.2.0/24'
+        destination_port: 443
+        protocol: 'TCP'
+        description: 'ANSIBLE_TEST_1_1'
+      register: opn_rr1
+      failed_when: >
+        opn_rr1.failed or
+        opn_rr1.changed
+      when: not ansible_check_mode
+
     - name: Updating more
       oxlorg.opnsense.rule:
         source_net: '192.168.0.0/24'
@@ -74,6 +98,54 @@
       failed_when: >
         opn4.failed or
         not opn4.changed
+      when: not ansible_check_mode
+
+    - name: Updating more - nothing changed
+      oxlorg.opnsense.rule:
+        source_net: '192.168.0.0/24'
+        destination_net: '192.168.2.0/24'
+        destination_port: 8443
+        protocol: 'UDP'
+        description: 'ANSIBLE_TEST_1_1'
+        interface: ['lan']  #  note: 'lo0' not accepted :(
+        log: false
+      register: opn_rr2
+      failed_when: >
+        opn_rr2.failed or
+        opn_rr2.changed
+      when: not ansible_check_mode
+
+    - name: Updating more - changed with reload
+      oxlorg.opnsense.rule:
+        source_net: '192.168.0.0/24'
+        destination_net: '192.168.2.0/24'
+        destination_port: 8443
+        protocol: 'UDP'
+        description: 'ANSIBLE_TEST_1_1'
+        interface: ['lan']  #  note: 'lo0' not accepted :(
+        log: false
+        reload: true
+        enabled: false
+      register: opn_rl2_1
+      failed_when: >
+        opn_rl2_1.failed or
+        not opn_rl2_1.changed
+      when: not ansible_check_mode
+
+    - name: Updating more - changed back with reload
+      oxlorg.opnsense.rule:
+        source_net: '192.168.0.0/24'
+        destination_net: '192.168.2.0/24'
+        destination_port: 8443
+        protocol: 'UDP'
+        description: 'ANSIBLE_TEST_1_1'
+        interface: ['lan']  #  note: 'lo0' not accepted :(
+        log: false
+        reload: true
+      register: opn_rl2_2
+      failed_when: >
+        opn_rl2_2.failed or
+        not opn_rl2_2.changed
       when: not ansible_check_mode
 
     - name: Disabling
@@ -144,6 +216,17 @@
       failed_when: >
         opn18.failed or
         not opn18.changed
+      when: not ansible_check_mode
+
+    - name: Updating IPv4 - nothing changed
+      oxlorg.opnsense.rule:
+        destination_port: 443
+        protocol: 'TCP'
+        description: 'ANSIBLE_TEST_1_10'
+      register: opn_rr3
+      failed_when: >
+        opn_rr3.failed or
+        opn_rr3.changed
       when: not ansible_check_mode
 
     - name: Triggering server-side validation error for interfaces
@@ -478,6 +561,20 @@
         not opn6.changed
       when: not ansible_check_mode
 
+    - name: Modifying rule 1 - nothing changed
+      oxlorg.opnsense.rule:
+        source_net: '192.168.0.0/24'
+        description: 'ANSIBLE_TEST_1_6'
+
+        destination_net: '192.168.10.0/24'
+        destination_port: 443
+        protocol: 'TCP'
+      register: opn_rr4
+      failed_when: >
+        opn_rr4.failed or
+        opn_rr4.changed
+      when: not ansible_check_mode
+
     - name: Creating rule 2
       oxlorg.opnsense.rule:
         source_net: '192.168.0.0/24'
@@ -599,6 +696,11 @@
   hosts: localhost
   gather_facts: no
   module_defaults:
+    oxlorg.opnsense.list:
+      firewall: "{{ lookup('ansible.builtin.env', 'TEST_FIREWALL') }}"
+      api_credential_file: "{{ lookup('ansible.builtin.env', 'TEST_API_KEY') }}"
+      ssl_verify: false
+
     oxlorg.opnsense.rule:
       firewall: "{{ lookup('ansible.builtin.env', 'TEST_FIREWALL') }}"
       api_credential_file: "{{ lookup('ansible.builtin.env', 'TEST_API_KEY') }}"
@@ -677,6 +779,21 @@
       failed_when: >
         opn3.failed or
         opn3.changed
+      when: not ansible_check_mode
+
+    - name: Updating Stateful firewall - read back
+      oxlorg.opnsense.list:
+        target: 'rule'
+      register: opn_rb1
+      vars:
+        rb_entry: >-
+          {{ opn_rb1.data | selectattr('description', 'equalto', "ANSIBLE_TEST_4_1") | list }}
+      failed_when: >
+        opn_rb1.failed or
+        rb_entry | length != 1 or
+        (rb_entry[0]['adaptive_end'] | string) != "99" or
+        (rb_entry[0]['adaptive_start'] | string) != "48" or
+        (rb_entry[0]['max_src_conn'] | string) != "45"
       when: not ansible_check_mode
 
     - name: Updating Source Routing firewall
@@ -793,3 +910,12 @@
       diff: false
       loop:
         - 'ANSIBLE_TEST_4_1'
+
+    - name: Check mode - nothing was written
+      oxlorg.opnsense.list:
+        target: 'rule'
+      register: opn_cm_after
+      failed_when: >
+        opn_cm_after.failed or
+        (opn_cm_after.data | to_json) != (opn_cm_before.data | to_json)
+      when: ansible_check_mode
