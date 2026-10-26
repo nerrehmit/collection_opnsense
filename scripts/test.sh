@@ -82,6 +82,7 @@ set +e
 run_test_soft '1_version' 0
 run_test '1_cleanup' 0
 run_test_soft '1_reload' 0
+run_test '1_http_client' 0
 
 set +e
 
@@ -98,7 +99,6 @@ run_test_soft 'rule' 1
 run_test_soft 'rule_multi' 1
 run_test_soft 'rule_purge' 0
 run_test_soft 'rule_interface_group' 1
-run_test_soft 'savepoint' 1
 run_test_soft 'cron' 1
 run_test_soft 'route' 1
 run_test_soft 'gateway' 1
@@ -120,6 +120,7 @@ run_test_soft 'wireguard_peer' 1
 run_test_soft 'wireguard_server' 1
 run_test_soft 'wireguard_general' 1
 run_test_soft 'wireguard_show' 1
+run_test_soft 'interface_assignment' 1
 run_test_soft 'interface_vlan' 1
 run_test_soft 'interface_vxlan' 1
 run_test_soft 'interface_vip' 1
@@ -144,12 +145,14 @@ run_test_soft 'frr_bgp_neighbor' 1
 run_test_soft 'frr_bgp_redistribution' 1
 run_test_soft 'frr_bgp_peer_group' 1
 run_test_soft 'frr_ospf_general' 1
+run_test_soft 'frr_ospf_area' 1
 run_test_soft 'frr_ospf_prefix_list' 1
 run_test_soft 'frr_ospf_interface' 1
 run_test_soft 'frr_ospf_route_map' 1
 run_test_soft 'frr_ospf_network' 1
 run_test_soft 'frr_ospf_redistribution' 1
 run_test_soft 'frr_ospf3_general' 1
+run_test_soft 'frr_ospf3_area' 1
 run_test_soft 'frr_ospf3_prefix_list' 1
 run_test_soft 'frr_ospf3_interface' 1
 run_test_soft 'frr_ospf3_route_map' 1
@@ -203,9 +206,12 @@ run_test_soft 'nginx_upstream_server' 1
 run_test_soft 'dhcrelay_destination' 1
 run_test_soft 'dhcrelay_relay' 1
 run_test_soft 'dhcp_general' 1
+run_test_soft 'dhcp_ha_peer' 1
 run_test_soft 'dhcp_controlagent' 1
 run_test_soft 'dhcp_subnet' 1
 run_test_soft 'dhcp_reservation' 1
+run_test_soft 'dhcp_option' 1
+run_test_soft 'dhcp_ddns' 1
 run_test_soft 'acme_general' 1
 run_test_soft 'acme_account' 1
 run_test_soft 'acme_validation' 1
@@ -259,6 +265,7 @@ run_test_soft 'haproxy_backend' 1
 run_test_soft 'haproxy_frontend' 1
 run_test_soft 'haproxy_healthcheck' 1
 run_test_soft 'haproxy_server' 1
+run_test_soft 'radvd' 1
 run_test_soft 'nut' 1
 run_test_soft 'nut_diagnostics' 1
 
