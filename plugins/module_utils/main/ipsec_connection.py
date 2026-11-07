@@ -45,26 +45,20 @@ class Connection(BaseModule):
         'bool': ['enabled', 'aggressive', 'mobike', 'encapsulation', 'send_certificate_request'],
         'list': ['local_addresses', 'remote_addresses', 'pools', 'proposals'],
         'select': ['send_certificate', 'unique', 'local_port', 'remote_port'],
-        'select_opt_list': ['version'],  # don't know why this is a list instead of a dict
+        # the option keys are 0..2, so the API returns a list instead of a dict
+        #   read the selected key (index) and not the label, as labels can change between releases
+        #   e.g. 26.7.8 renamed 'IKEv1+IKEv2' to 'IKEv1+IKEv2 (allows deprecated IKEv1)'
+        'select_opt_list_idx': ['version'],
         'int': [
             'keying_tries', 'dpd_timeout_seconds', 'dpd_delay_seconds', 'over_seconds',
             'rekey_seconds', 'reauth_seconds',
         ],
     }
-    FIELDS_VALUE_MAPPING = {  # sending
+    FIELDS_VALUE_MAPPING = {  # sending and receiving
         'version': {
             'ikev1+2': 0,
             'ikev1': 1,
             'ikev2': 2,
-        },
-        'local_port': {'500': ''},
-        'remote_port': {'500': ''},
-    }
-    FIELDS_VALUE_MAPPING_RCV = {  # receiving
-        'version': {
-            'ikev1+2': 'IKEv1+IKEv2',
-            'ikev1': 'IKEv1',
-            'ikev2': 'IKEv2',
         },
         'local_port': {'500': ''},
         'remote_port': {'500': ''},
