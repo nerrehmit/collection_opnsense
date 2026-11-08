@@ -17,11 +17,10 @@ class General(GeneralModule):
     API_CONT_REL = 'service'
     API_CMD_REL = 'reconfigure'
     FIELDS_CHANGE = [
-        'auto_renewal', 'challenge_port', 'tls_challenge_port', 'restart_timeout',
+        'enabled', 'auto_renewal', 'challenge_port', 'tls_challenge_port', 'restart_timeout',
         'haproxy_integration', 'log_level', 'show_intro',
     ]
-    FIELDS_ALL = ['enabled']
-    FIELDS_ALL.extend(FIELDS_CHANGE)
+    FIELDS_ALL = FIELDS_CHANGE
     FIELDS_TRANSLATE = {
         'auto_renewal': 'autoRenewal',
         'challenge_port': 'challengePort',

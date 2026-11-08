@@ -63,7 +63,9 @@ class GeneralModule(BaseLogic):
         return self.search_call()
 
     def process(self) -> None:
-        self._base_update()
+        # single-settings APIs have no 'toggle' endpoint (and no entry uuid to pass to one)
+        #   'enabled' is a setting like any other: it must be in FIELDS_CHANGE so it is compared and sent with 'set'
+        self._base_update(enable_switch=False)
 
     def update(self) -> None:
         self._base_update(enable_switch=False)
