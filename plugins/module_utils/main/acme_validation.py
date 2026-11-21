@@ -52,7 +52,8 @@ class Validation(BaseModule):
         'dns_opnsense_key', 'dns_opnsense_token', 'dns_opnsense_insecure', 'dns_ovh_app_key', 'dns_ovh_app_secret',
         'dns_ovh_consumer_key', 'dns_ovh_endpoint', 'dns_pleskxml_user', 'dns_pleskxml_pass', 'dns_pleskxml_uri',
         'dns_pdns_url', 'dns_pdns_serverid', 'dns_pdns_token', 'dns_porkbun_key', 'dns_porkbun_secret', 'dns_sl_key',
-        'dns_selfhost_user', 'dns_selfhost_password', 'dns_selfhost_map', 'dns_servercow_username',
+        'dns_selfhost_apikey', 'dns_selfhost_user', 'dns_selfhost_password', 'dns_selfhost_map',
+        'dns_servercow_username',
         'dns_servercow_password', 'dns_simply_api_key', 'dns_simply_account_name', 'dns_transip_username',
         'dns_transip_key', 'dns_udr_user', 'dns_udr_password', 'dns_uno_key', 'dns_uno_user', 'dns_vscale_key',
         'dns_vultr_key', 'dns_yandex_token', 'dns_zilore_key', 'dns_zm_key', 'dns_gdnsdk_user', 'dns_gdnsdk_password',
@@ -127,6 +128,41 @@ class Validation(BaseModule):
                 self.r['changed'] = True
 
         self._base_check()
+
+        if self.p['state'] == 'present' and self.p['method'] == 'dns01' and self.p['dns_service'] == 'dns_selfhost':
+            self._check_selfhost_auth()
+
+    def _check_selfhost_auth(self) -> None:
+        # os-acme-client 4.18 (OPNsense 26.7.9) replaced the Selfhost user and password with an API key
+        #   OPNsense ignores fields its model does not have, so the wrong ones would be dropped without an error
+        if self._model_has_field('dns_selfhost_apikey'):
+            if is_unset(self.p['dns_selfhost_apikey']):
+                self.m.warn(
+                    "Selfhost needs 'dns_selfhost_apikey' on this firewall (os-acme-client 4.18 or later). "
+                    "It ignores 'dns_selfhost_user' and 'dns_selfhost_password'!"
+                )
+
+        elif not is_unset(self.p['dns_selfhost_apikey']):
+            self.m.warn(
+                "The os-acme-client on this firewall is older than 4.18 and ignores 'dns_selfhost_apikey'. "
+                "Selfhost needs 'dns_selfhost_user' and 'dns_selfhost_password' there!"
+            )
+
+    def _model_has_field(self, field: str) -> bool:
+        entries = self.existing_entries
+        if isinstance(entries, dict):
+            entries = list(entries.values())
+
+        if entries:
+            # every validation the API returns has all fields of the model
+            return field in entries[0]
+
+        # no validation exists yet - the defaults of a new one also list all fields
+        return field in self._api_get({
+            'module': 'acmeclient',
+            'controller': 'validations',
+            'command': 'get',
+        }).get('validation', {})
 
     def reload(self):
         # no reload required
