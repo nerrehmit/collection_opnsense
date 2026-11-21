@@ -102,6 +102,7 @@ run_test_soft 'rule_interface_group' 1
 run_test_soft 'cron' 1
 run_test_soft 'route' 1
 run_test_soft 'gateway' 1
+run_test_soft 'gateway_group' 1
 run_test_soft 'unbound_general' 1
 run_test_soft 'unbound_acl' 1
 run_test_soft 'unbound_dot' 1
