@@ -33,6 +33,8 @@ class Host(BaseModule):
     FIELDS_ALL = ['enabled']
     FIELDS_ALL.extend(FIELDS_CHANGE)
     EXIST_ATTR = 'host'
+    # 'addptr' only exists since OPNsense 26.1.3
+    FIELDS_OPTIONAL = ['add_ptr']
     FIELDS_TYPING = {
         'bool': ['enabled', 'add_ptr'],
         'select': ['record_type'],
@@ -77,6 +79,7 @@ class Host(BaseModule):
             existing=host,
             typing=self.FIELDS_TYPING,
             translate=self.FIELDS_TRANSLATE,
+            optional=self.FIELDS_OPTIONAL,
         )
 
         if simple['record_type'] == 'MX':

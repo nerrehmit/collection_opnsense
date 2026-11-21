@@ -41,7 +41,8 @@ def run_module():
         description=dict(type='str', required=False, aliases=['desc']),
         add_ptr=dict(
             type='bool', required=False, aliases=['addptr', 'ptr'], default=True,
-            description="Also create the matching PTR record. Only used for the record types 'A' and 'AAAA'"
+            description="Also create the matching PTR record. Only used for the record types 'A' and 'AAAA'. "
+                        "Needs OPNsense 26.1.3 or later, older releases do not have this setting and ignore it"
         ),
         match_fields=dict(
             type='list', required=False, elements='str',

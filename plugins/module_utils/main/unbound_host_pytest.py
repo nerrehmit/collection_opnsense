@@ -100,3 +100,15 @@ def test_unbound_host_ptr_disabled_in_gui_is_detected(mocker):
 
     assert _run(PARAMS)['changed']
     assert testdata.posted[-1]['addptr'] == 1
+
+
+def test_unbound_host_without_addptr_before_26_1_3(mocker):
+    # OPNsense 26.1.0 to 26.1.2 have no 'addptr' - existing hosts must still be readable and idempotent
+    testdata = UnboundHostTestdata()
+    pytest_mock_http_responses(mocker=mocker, handler=testdata)
+    _run(PARAMS)
+    list(testdata.state.values())[0].pop('addptr')
+
+    assert not _run(PARAMS)['changed']
+    assert not _run({**PARAMS, 'add_ptr': False})['changed']
+    assert _run({**PARAMS, 'value': '192.168.0.2'})['changed']
