@@ -826,6 +826,14 @@
         name: 'ANSIBLE@TEST1'
         state: 'absent'
 
+    - name: Cleanup Gateway groups
+      oxlorg.opnsense.gateway_group:
+        name: "{{ item }}"
+        state: 'absent'
+      loop:
+        - 'ANSIBLE_TEST_GRP_1'
+        - 'ANSIBLE_TEST_GRP_2'
+
     - name: Cleanup Gateways
       oxlorg.opnsense.gateway:
         name: "{{ item }}"
