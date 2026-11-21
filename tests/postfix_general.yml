@@ -100,6 +100,109 @@
         opn3.changed
       when: not ansible_check_mode
 
+    - name: Disabling without any other change
+      oxlorg.opnsense.postfix_general:
+        enabled: false
+        myhostname: mx.example.com
+        mydomain: example.com
+        inet_port: 26
+        ip_version: ipv4
+        mynetworks:
+          - '127.0.0.0/8'
+          - '[::1]/128'
+          - '[:ffff:127.0.0.0]/104'
+          - '192.168.0.0/16'
+        masquerade_domains:
+          - example.com
+          - example.net
+        tls_server_compatibility: modern
+        tls_client_compatibility: modern
+        tlswrappermode: true
+        smtpclient_security: encrypt
+        relayhost: relay.example.com
+        smtpauth_enabled: true
+        smtpauth_user: postfix
+        smtpauth_password: SECRET
+      register: opn4
+      failed_when: >
+        opn4.failed or
+        not opn4.changed
+      when: not ansible_check_mode
+
+    - name: Disabling without any other change - read back
+      oxlorg.opnsense.list:
+      register: opn4_rb
+      failed_when: >
+        opn4_rb.failed or
+        (opn4_rb.data.enabled | bool)
+      when: not ansible_check_mode
+
+    - name: Disabling without any other change - nothing changed
+      oxlorg.opnsense.postfix_general:
+        enabled: false
+        myhostname: mx.example.com
+        mydomain: example.com
+        inet_port: 26
+        ip_version: ipv4
+        mynetworks:
+          - '127.0.0.0/8'
+          - '[::1]/128'
+          - '[:ffff:127.0.0.0]/104'
+          - '192.168.0.0/16'
+        masquerade_domains:
+          - example.com
+          - example.net
+        tls_server_compatibility: modern
+        tls_client_compatibility: modern
+        tlswrappermode: true
+        smtpclient_security: encrypt
+        relayhost: relay.example.com
+        smtpauth_enabled: true
+        smtpauth_user: postfix
+        smtpauth_password: SECRET
+      register: opn5
+      failed_when: >
+        opn5.failed or
+        opn5.changed
+      when: not ansible_check_mode
+
+    - name: Enabling without any other change
+      oxlorg.opnsense.postfix_general:
+        enabled: true
+        myhostname: mx.example.com
+        mydomain: example.com
+        inet_port: 26
+        ip_version: ipv4
+        mynetworks:
+          - '127.0.0.0/8'
+          - '[::1]/128'
+          - '[:ffff:127.0.0.0]/104'
+          - '192.168.0.0/16'
+        masquerade_domains:
+          - example.com
+          - example.net
+        tls_server_compatibility: modern
+        tls_client_compatibility: modern
+        tlswrappermode: true
+        smtpclient_security: encrypt
+        relayhost: relay.example.com
+        smtpauth_enabled: true
+        smtpauth_user: postfix
+        smtpauth_password: SECRET
+      register: opn6
+      failed_when: >
+        opn6.failed or
+        not opn6.changed
+      when: not ansible_check_mode
+
+    - name: Enabling without any other change - read back
+      oxlorg.opnsense.list:
+      register: opn6_rb
+      failed_when: >
+        opn6_rb.failed or
+        not (opn6_rb.data.enabled | bool)
+      when: not ansible_check_mode
+
     - name: Cleanup
       oxlorg.opnsense.postfix_general:
         enabled: false

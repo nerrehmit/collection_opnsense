@@ -15,7 +15,7 @@ class General(GeneralModule):
     API_CONT = 'general'
     API_CONT_REL = 'service'
     FIELDS_CHANGE = [
-        'myhostname', 'mydomain', 'myorigin', 'inet_interfaces', 'inet_port', 'ip_version', 'bind_address',
+        'enabled', 'myhostname', 'mydomain', 'myorigin', 'inet_interfaces', 'inet_port', 'ip_version', 'bind_address',
         'bind_address6', 'mynetworks', 'banner', 'message_size_limit', 'masquerade_domains',
         'tls_server_compatibility', 'tls_client_compatibility', 'certificate', 'ca', 'smtpclient_security',
         'relayhost', 'smtpauth_enabled', 'smtpauth_user', 'smtpauth_password', 'enforce_recipient_check',
@@ -25,8 +25,7 @@ class General(GeneralModule):
         'reject_non_fqdn_sender', 'reject_non_fqdn_recipient', 'permit_sasl_authenticated', 'permit_tls_clientcerts',
         'permit_mynetworks', 'reject_unauth_destination', 'reject_unverified_recipient', 'delay_warning_time',
     ]
-    FIELDS_ALL = ['enabled']
-    FIELDS_ALL.extend(FIELDS_CHANGE)
+    FIELDS_ALL = FIELDS_CHANGE
     FIELDS_TYPING = {
         'bool': [
             'enabled', 'tlswrappermode', 'smtpauth_enabled', 'enforce_recipient_check', 'extensive_helo_restrictions',
