@@ -104,7 +104,7 @@ oxlorg.opnsense.gateway_group
     :header: "Parameter", "Type", "Required", "Default", "Aliases", "Comment"
     :widths: 15 10 10 10 10 45
 
-    "name","string","true","\-","\-","Unique name of the gateway group. Only 'a-zA-Z0-9_-', at most 32 characters. It must not be the name of a gateway. OPNsense doesn't allow renaming a gateway group, so a new name creates a new group"
+    "name","string","true","\-","\-","Unique name of the gateway group. Only letters, digits, '-' and '_', at most 32 characters. It must not be the name of a gateway. OPNsense doesn't allow renaming a gateway group, so a new name creates a new group"
     "tier1","list of strings","false for deletion, else at least one tier","[]","\-","Names of the gateways in tier 1, as shown in 'System - Gateways - Configuration - Name'. Lower tiers are preferred, gateways in the same tier share the load"
     "tier2","list of strings","false","[]","\-","Names of the gateways in tier 2"
     "tier3","list of strings","false","[]","\-","Names of the gateways in tier 3"

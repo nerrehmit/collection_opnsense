@@ -37,7 +37,7 @@ def run_module():
     module_args = dict(
         name=dict(
             type='str', required=True,
-            description="Unique name of the gateway group. Only 'a-zA-Z0-9_-', at most 32 characters. "
+            description="Unique name of the gateway group. Only letters, digits, '-' and '_', at most 32 characters. "
                         "OPNsense doesn't allow renaming a gateway group",
         ),
         tier1=_tier_arg(1),
