@@ -398,6 +398,9 @@
         - 'ANSIBLE_TEST_1_2'
         - 'ANSIBLE_TEST_2_1'
         - 'ANSIBLE_TEST_2_2'
+        - 'ANSIBLE_TEST_1_3'
+        - 'ANSIBLE_TEST_1_4'
+        - 'ANSIBLE_TEST_2_3'
 
     - name: Cleanup FRR BGP route-maps
       oxlorg.opnsense.frr_bgp_route_map:

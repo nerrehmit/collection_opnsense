@@ -249,6 +249,73 @@
         not opn_af5.changed
       when: not ansible_check_mode
 
+    - name: Adding 4 - failing because of bfd_strict without bfd
+      oxlorg.opnsense.frr_bgp_neighbor:
+        description: 'ANSIBLE_TEST_1_4'
+        as_number: 64498
+        ip: '10.0.2.1'
+        bfd_strict: true
+      register: opn_fail7
+      failed_when: not opn_fail7.failed
+
+    - name: Adding 4 - with the os-frr 2.0 options
+      oxlorg.opnsense.frr_bgp_neighbor:
+        description: 'ANSIBLE_TEST_1_4'
+        as_number: 64498
+        ip: '10.0.2.1'
+        local_as: 64499
+        soft_reconfiguration_inbound: true
+        bfd: true
+        bfd_strict: true
+        remove_private_as: 'replace_all'
+        allow_as_in: '3'
+        attribute_unchanged: 'next-hop'
+        capabilities: ['extended-nexthop', 'fqdn']
+      register: opn_opt1
+      failed_when: >
+        opn_opt1.failed or
+        not opn_opt1.changed
+
+    - name: Adding 4 - nothing changed
+      oxlorg.opnsense.frr_bgp_neighbor:
+        description: 'ANSIBLE_TEST_1_4'
+        as_number: 64498
+        ip: '10.0.2.1'
+        local_as: 64499
+        soft_reconfiguration_inbound: true
+        bfd: true
+        bfd_strict: true
+        remove_private_as: 'replace_all'
+        allow_as_in: '3'
+        attribute_unchanged: 'next-hop'
+        capabilities: ['fqdn', 'extended-nexthop']
+      register: opn_opt2
+      failed_when: >
+        opn_opt2.failed or
+        opn_opt2.changed
+      when: not ansible_check_mode
+
+    - name: Changing 4 - back to the defaults
+      oxlorg.opnsense.frr_bgp_neighbor:
+        description: 'ANSIBLE_TEST_1_4'
+        as_number: 64498
+        ip: '10.0.2.1'
+      register: opn_opt3
+      failed_when: >
+        opn_opt3.failed or
+        not opn_opt3.changed
+      when: not ansible_check_mode
+
+    - name: Removing 4
+      oxlorg.opnsense.frr_bgp_neighbor:
+        description: 'ANSIBLE_TEST_1_4'
+        state: 'absent'
+      register: opn_opt4
+      failed_when: >
+        opn_opt4.failed or
+        not opn_opt4.changed
+      when: not ansible_check_mode
+
     - name: Removing 2
       oxlorg.opnsense.frr_bgp_neighbor:
         description: 'ANSIBLE_TEST_1_2'
@@ -275,6 +342,7 @@
         - 'ANSIBLE_TEST_1_1'
         - 'ANSIBLE_TEST_1_2'
         - 'ANSIBLE_TEST_1_3'
+        - 'ANSIBLE_TEST_1_4'
       when: not ansible_check_mode
 
     - name: Listing
@@ -359,6 +427,45 @@
         not opn13.changed
       when: not ansible_check_mode
 
+    - name: Adding neighbor - failing because of non-existent peer group
+      oxlorg.opnsense.frr_bgp_neighbor:
+        description: 'ANSIBLE_TEST_2_3'
+        peer_group: 'DOES-NOT-EXIST'
+        as_number: 64498
+        ip: '10.0.2.1'
+      register: opn_fail8
+      failed_when: not opn_fail8.failed
+
+    - name: Adding dummy peer group
+      oxlorg.opnsense.frr_bgp_peer_group:
+        name: 'ANSIBLE_TEST_2_1'
+        as_number: 64498
+      when: not ansible_check_mode
+
+    - name: Adding neighbor linked to peer group
+      oxlorg.opnsense.frr_bgp_neighbor:
+        description: 'ANSIBLE_TEST_2_3'
+        peer_group: 'ANSIBLE_TEST_2_1'
+        as_number: 64498
+        ip: '10.0.2.1'
+      register: opn14
+      failed_when: >
+        opn14.failed or
+        not opn14.changed
+      when: not ansible_check_mode
+
+    - name: Adding neighbor linked to peer group - nothing changed
+      oxlorg.opnsense.frr_bgp_neighbor:
+        description: 'ANSIBLE_TEST_2_3'
+        peer_group: 'ANSIBLE_TEST_2_1'
+        as_number: 64498
+        ip: '10.0.2.1'
+      register: opn15
+      failed_when: >
+        opn15.failed or
+        opn15.changed
+      when: not ansible_check_mode
+
     - name: Cleanup neighbors
       oxlorg.opnsense.frr_bgp_neighbor:
         description: "{{ item }}"
@@ -366,6 +473,13 @@
       loop:
         - 'ANSIBLE_TEST_2_1'
         - 'ANSIBLE_TEST_2_2'
+        - 'ANSIBLE_TEST_2_3'
+      when: not ansible_check_mode
+
+    - name: Cleanup peer group
+      oxlorg.opnsense.frr_bgp_peer_group:
+        name: 'ANSIBLE_TEST_2_1'
+        state: 'absent'
       when: not ansible_check_mode
 
     - name: Cleanup prefix-list

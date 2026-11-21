@@ -34,6 +34,10 @@ def run_module():
         as_number=dict(
             type='int', required=False, aliases=['as', 'as_nr', 'remote_as']
         ),
+        local_as=dict(
+            type='int', required=False, aliases=['local_as_number'],
+            description='Optional local AS to present to this specific neighbor.'
+        ),
         remote_as_mode=dict(
             type='str', required=False, aliases=['as_mode'],
             choices=['internal', 'external'],
@@ -88,9 +92,19 @@ def run_module():
             type='bool', required=False, default=False,
             aliases=['route_reflector_client']
         ),
+        soft_reconfiguration_inbound=dict(
+            type='bool', required=False, default=False, aliases=['soft_reconfig_in'],
+            description='Allows policy changes without resetting the session by storing inbound updates.'
+        ),
         bfd=dict(
             type='bool', required=False, default=False,
             description='Enable BFD support for this neighbor.'
+        ),
+        bfd_strict=dict(
+            type='bool', required=False, default=False,
+            description='Strict mode requires the BFD session to be established before allowing BGP '
+                        'to connect. If BFD goes down, BGP immediately closes the session. '
+                        "Requires 'bfd' to be enabled."
         ),
         send_default_route=dict(
             type='bool', required=False, default=False, aliases=['default_originate'],
@@ -100,10 +114,33 @@ def run_module():
             description='Override AS number of the originating router with the local '
                         'AS number. This command is only allowed for eBGP peers.'
         ),
+        remove_private_as=dict(
+            type='str', required=False, default='',
+            choices=['', 'remove_private', 'remove_all', 'replace_private', 'replace_all'],
+            description='Configure how private AS numbers are propagated in outbound updates. '
+                        "'remove_private' = remove-private-AS, 'remove_all' = remove-private-AS all, "
+                        "'replace_private' = remove-private-AS replace-AS, "
+                        "'replace_all' = remove-private-AS all replace-AS"
+        ),
+        allow_as_in=dict(
+            type='str', required=False, default='', aliases=['allowas_in'],
+            choices=['', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'origin'],
+            description='Accept incoming routes with an AS path containing the own AS number - '
+                        "up to the given number of times, or only if it is the originating AS ('origin')."
+        ),
         disable_connected_check=dict(
             type='bool', required=False, default=False,
             description='Allow peerings between directly connected eBGP peers using '
                         'loopback addresses.'
+        ),
+        attribute_unchanged=dict(
+            type='str', required=False, default='', choices=['', 'as-path', 'next-hop', 'med'],
+            description='Keep the given attribute unchanged in updates to the neighbor.'
+        ),
+        capabilities=dict(
+            type='list', elements='str', required=False, default=[],
+            choices=['extended-nexthop', 'dynamic', 'fqdn', 'link-local'],
+            description='Additional capabilities this neighbor may negotiate with its peer.'
         ),
         keepalive=dict(
             type='int', required=False, default=60, aliases=['keep_alive'],
@@ -130,6 +167,10 @@ def run_module():
         ),
         route_map_out=dict(
             type='str', required=False, aliases=['map_out', 'rm_out']
+        ),
+        peer_group=dict(
+            type='str', required=False, aliases=['peergroup', 'group'],
+            description='Name of the peer group this neighbor belongs to.'
         ),
         match_fields=dict(
             type='list', required=False, elements='str',
