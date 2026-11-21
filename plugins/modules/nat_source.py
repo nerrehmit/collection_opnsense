@@ -62,7 +62,8 @@ def run_module():
             description='Preserve the source port instead of randomizing it. '
                         'Required for protocols that embed the source port in '
                         'their payload (e.g. some game consoles needing NAT '
-                        'type B/Open).'
+                        'type B/Open). Needs OPNsense 26.1.5 or later, older '
+                        'releases do not have this setting and ignore it.'
         ),
         match_fields=dict(
             type='list', required=True, elements='str',

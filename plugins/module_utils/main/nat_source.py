@@ -37,6 +37,8 @@ class SNat(BaseModule):
         'no_nat': 'nonat',
         'static_port': 'staticnatport',
     }
+    # 'staticnatport' only exists since OPNsense 26.1.5
+    FIELDS_OPTIONAL = ['static_port']
     FIELDS_TYPING = {
         'bool': ['enabled', 'log', 'source_invert', 'no_nat', 'destination_invert', 'static_port'],
         'list': [],
