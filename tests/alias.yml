@@ -443,6 +443,40 @@
           - '::f00d'
         interface: 'lan'
 
+    # asn
+
+    - name: Adding asn
+      oxlorg.opnsense.alias:
+        name: 'ANSIBLE_TEST_1_2_ASN1'
+        type: 'asn'
+        content: ['13335', '15169']
+      register: opn_asn1
+      failed_when: >
+        opn_asn1.failed or
+        not opn_asn1.changed
+
+    - name: Adding asn - nothing changed
+      oxlorg.opnsense.alias:
+        name: 'ANSIBLE_TEST_1_2_ASN1'
+        type: 'asn'
+        content: ['15169', '13335']
+      register: opn_asn2
+      failed_when: >
+        opn_asn2.failed or
+        opn_asn2.changed
+      when: not ansible_check_mode
+
+    - name: Adding invalid asn
+      oxlorg.opnsense.alias:
+        name: 'ANSIBLE_TEST_1_2_ASN2'
+        type: 'asn'
+        content: "{{ item }}"
+      register: opn_asn3
+      failed_when: not opn_asn3.failed
+      loop:
+        - ['AS13335']
+        - ['0']
+
     # external
     - name: Adding external alias with expiration
       oxlorg.opnsense.alias:
@@ -514,6 +548,8 @@
         - 'ANSIBLE_TEST_1_2_GEOIP2'
         - 'ANSIBLE_TEST_1_2_GEOIP3'
         - 'ANSIBLE_TEST_1_2_DYNIPV6HOST1'
+        - 'ANSIBLE_TEST_1_2_ASN1'
+        - 'ANSIBLE_TEST_1_2_ASN2'
         - 'ANSIBLE_TEST_1_2_EXTERNAL1'
 
 - name: Testing Alias - listing
