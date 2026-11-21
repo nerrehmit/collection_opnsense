@@ -209,15 +209,22 @@ def validate_int_fields(
 
     for field, valid in field_minmax.items():
         try:
-            if ('min' in valid and int(data[field]) < valid['min']) or \
-               ('max' in valid and int(data[field]) > valid['max']):
-                error_func(
-                    f"Value of field '{field}' is not valid - "
-                    f"Must be between {valid['min']} and {valid['max']}!"
-                )
+            value = int(data[field])
 
-        except (TypeError, ValueError):
-            pass
+        except (TypeError, ValueError, KeyError):
+            continue
+
+        if 'min' in valid and value < valid['min']:
+            error_func(
+                f"Value of field '{field}' is not valid - "
+                f"Must be greater than or equal to {valid['min']}!"
+            )
+
+        elif 'max' in valid and value > valid['max']:
+            error_func(
+                f"Value of field '{field}' is not valid - "
+                f"Must be less than or equal to {valid['max']}!"
+            )
 
 
 def validate_str_fields(
@@ -257,7 +264,7 @@ def is_ip(host: str, ignore_empty: bool = False, strip_enclosure: bool = True) -
     if ignore_empty and is_unset(host):
         return True
 
-    if strip_enclosure and host.startswith('['):
+    if strip_enclosure and isinstance(host, str) and host.startswith('['):
         host = host[1:-1]
 
     try:
@@ -284,7 +291,7 @@ def is_ip6(host: str, ignore_empty: bool = False, strip_enclosure: bool = True) 
     if ignore_empty and is_unset(host):
         return True
 
-    if strip_enclosure and host.startswith('['):
+    if strip_enclosure and isinstance(host, str) and host.startswith('['):
         host = host[1:-1]
 
     try:

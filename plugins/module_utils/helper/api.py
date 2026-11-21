@@ -87,20 +87,32 @@ def check_host(module: AnsibleModule) -> None:
             module.fail_json(f"Host '{module.params['firewall']}' is neither a valid IP nor Domain-Name!")
 
 
-def ssl_verification(module: AnsibleModule) -> (ssl.SSLContext, bool):
+def ssl_verification_lib_httpx(module: AnsibleModule) -> (ssl.SSLContext, bool):
     context = ssl.create_default_context()
 
     if not module.params['ssl_verify']:
-        context = False
+        return False
 
-    elif module.params['ssl_ca_file'] is not None:
-        if Path(module.params['ssl_ca_file']).is_file():
-            context.load_verify_locations(cafile=module.params['ssl_ca_file'])
+    if module.params['ssl_ca_file'] is not None:
+        if not Path(module.params['ssl_ca_file']).is_file():
+            module.fail_json(f"The provided 'ssl_ca_file' at path '{module.params['ssl_ca_file']}' does not exist!")
 
-        else:
-            module.fail_json(f"Provided 'ssl_ca_file' at path '{module.params['ssl_ca_file']}' does not exist!")
+        context.load_verify_locations(cafile=module.params['ssl_ca_file'])
 
     return context
+
+
+def ssl_verification_lib_requests(module: AnsibleModule) -> (bool, str):
+    if not module.params['ssl_verify']:
+        return False
+
+    if module.params['ssl_ca_file'] is not None:
+        if not Path(module.params['ssl_ca_file']).is_file():
+            module.fail_json(f"The provided 'ssl_ca_file' at path '{module.params['ssl_ca_file']}' does not exist!")
+
+        return module.params['ssl_ca_file']
+
+    return True
 
 
 def get_params_path(cnf: dict) -> str:
@@ -113,30 +125,79 @@ def get_params_path(cnf: dict) -> str:
     return params_path
 
 
-def _clean_response(response: dict) -> dict:
-    response_data = response.copy()
+def _sanitize_response_for_logging_lib_httpx(response_raw: dict) -> dict:
+    sanitized = response_raw.copy()
+    sanitized['http_client'] = 'httpx'
+
     for field in [
         'headers', 'next_request', '_decoder', 'stream', 'extensions', 'history', 'is_closed',
         'is_stream_consumed', 'default_encoding',
     ]:
-        if field in response_data:
-            response_data.pop(field)
+        if field in sanitized:
+            sanitized.pop(field)
 
-    return response_data
+    if '_request' in sanitized:
+        raw_request = sanitized.pop('_request')
+        sanitized['url'] = str(raw_request.url)  # httpx.URL
+        sanitized['method'] = raw_request.method
+
+    if '_num_bytes_downloaded' in sanitized:
+        sanitized['bytes_downloaded'] = sanitized.pop('_num_bytes_downloaded')
+
+    if '_elapsed' in sanitized:
+        sanitized['elapsed_ms'] = sanitized.pop('_elapsed').microseconds
+
+    if '_content' in sanitized:
+        sanitized['body'] = sanitized.pop('_content')
+
+    return sanitized
+
+
+def _sanitize_response_for_logging_lib_requests(response_raw: dict) -> dict:
+    sanitized = response_raw.copy()
+    sanitized['http_client'] = 'requests'
+
+    for field in [
+        '_content_consumed', '_next', 'headers', 'raw', 'encoding', 'history', 'cookies', 'connection',
+    ]:
+        if field in sanitized:
+            sanitized.pop(field)
+
+    if 'request' in sanitized:
+        raw_request = sanitized.pop('request')
+        sanitized['method'] = raw_request.method
+
+    if '_content' in sanitized:
+        sanitized['body'] = sanitized.pop('_content')
+
+    if 'elapsed' in sanitized:
+        sanitized['elapsed_ms'] = sanitized.pop('elapsed').microseconds
+
+    return sanitized
+
+
+def _sanitize_response_for_logging(http_client_lib: str, response_raw: dict) -> dict:
+    # the full response contains the full request including plaintext secrets
+
+    if http_client_lib == 'httpx':
+        return _sanitize_response_for_logging_lib_httpx(response_raw)
+
+    return _sanitize_response_for_logging_lib_requests(response_raw)
 
 
 def debug_api(
-        module: AnsibleModule, method: str = None, url: str = None,
+        module: AnsibleModule, http_client_lib: str, method: str = None, url: str = None,
         data: dict = None, headers: dict = None, response: dict = None,
 ) -> None:
     if 'debug' not in module.params or not module.params['debug']:
         return
 
     if response is not None:
-        msg = f"RESPONSE: '{_clean_response(response.__dict__)}'"
+        # NOTE: we do not sanitize the response here because the user chose to enable debug-output
+        msg = f"CLI-LIB: {http_client_lib} | RESPONSE: '{response.__dict__}'"
 
     else:
-        msg = f'REQUEST: {method} | URL: {url}'
+        msg = f"CLI-LIB: {http_client_lib} | REQUEST: {method} | URL: {url}"
 
         if headers is not None:
             msg += f" | HEADERS: '{headers}'"
@@ -157,8 +218,8 @@ def debug_api(
     module.warn(msg)
 
 
-def check_response(module: AnsibleModule, cnf: dict, response) -> dict:
-    debug_api(module=module, response=response)
+def check_response(module: AnsibleModule, cnf: dict, http_client_lib: str, response) -> dict:
+    debug_api(module=module, http_client_lib=http_client_lib, response=response)
 
     if 'allowed_http_stati' not in cnf:
         cnf['allowed_http_stati'] = [200]
@@ -169,27 +230,32 @@ def check_response(module: AnsibleModule, cnf: dict, response) -> dict:
     except JSONDecodeError:
         json = {}
 
+    sanitized_response = _sanitize_response_for_logging(
+        http_client_lib=http_client_lib,
+        response_raw=response.__dict__,
+    )
+    debug_info = " (set 'debug: true' for more info)"
+    if 'debug' in module.params and module.params['debug']:
+        debug_info = ''
+
+    if 'validations' in json and json['validations'] is not None and len(json['validations']) > 0:
+        # OPNsense sometimes reports a positive response-status even if the action failed :'(
+        module.fail_json(
+            f"API call failed | Error: {json['validations']} | "
+            f"Info: {sanitized_response}{debug_info}"
+        )
+
     if response.status_code not in cnf['allowed_http_stati'] or \
             ('result' in json and json['result'] == 'failed'):
         # sometimes an error 'hides' behind a 200-code
-        if f"{response.__dict__}".find('Controller not found') != -1:
+        if f"{sanitized_response}".find('Controller not found') != -1:
             module.fail_json(
                 f"API call failed | Needed plugin not installed! | "
-                f"Response: {response.__dict__}"
+                f"Info: {sanitized_response}{debug_info}"
             )
 
-        elif f"{response.__dict__}".find(' in use') != -1:
-            json['in_use'] = True
-
         else:
-            if 'validations' in json:
-                module.fail_json(
-                    f"API call failed | Error: {json['validations']} | "
-                    f"Response: {response.__dict__}"
-                )
-
-            else:
-                module.fail_json(f"API call failed | Response: {response.__dict__}")
+            module.fail_json(f"API call failed | Info: {sanitized_response}{debug_info}")
 
     return json
 
