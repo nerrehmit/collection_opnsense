@@ -249,12 +249,23 @@
         opn25.failed or
         not opn25.changed
 
+    - name: Adding 12 - DNS Selfhost (API key since os-acme-client 4.18)
+      oxlorg.opnsense.acme_validation:
+        name: 'ANSIBLE_TEST_1_12'
+        dns_service: 'dns_selfhost'
+        dns_selfhost_apikey: 'SECRET'
+        dns_selfhost_map: 'example.com:12345'
+      register: opn27
+      failed_when: >
+        opn27.failed or
+        not opn27.changed
+
     - name: Listing
       oxlorg.opnsense.list:
       register: opn8
       failed_when: >
         'data' not in opn8 or
-        opn8.data | length != 11
+        opn8.data | length != 12
       when: not ansible_check_mode
 
     - name: Cleanup
@@ -273,6 +284,7 @@
         - 'ANSIBLE_TEST_1_9'
         - 'ANSIBLE_TEST_1_10'
         - 'ANSIBLE_TEST_1_11'
+        - 'ANSIBLE_TEST_1_12'
       when: not ansible_check_mode
 
     - name: Listing
