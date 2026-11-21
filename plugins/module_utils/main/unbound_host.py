@@ -28,17 +28,18 @@ class Host(BaseModule):
     API_CONT_REL = 'service'
     FIELDS_CHANGE = [
         'hostname', 'domain', 'record_type', 'prio', 'value',
-        'description',
+        'description', 'add_ptr',
     ]
     FIELDS_ALL = ['enabled']
     FIELDS_ALL.extend(FIELDS_CHANGE)
     EXIST_ATTR = 'host'
     FIELDS_TYPING = {
-        'bool': ['enabled'],
+        'bool': ['enabled', 'add_ptr'],
         'select': ['record_type'],
     }
     FIELDS_TRANSLATE = {
         'record_type': 'rr',
+        'add_ptr': 'addptr',
         # 'prio': 'mxprio',
         # 'value': 'mx',  # mx or server
     }
@@ -95,6 +96,7 @@ class Host(BaseModule):
             'domain': self.p['domain'],
             'rr': self.p['record_type'],  # A/AAAA/MX
             'description': self.p['description'],
+            'addptr': to_digit(self.p['add_ptr']),
         }
 
         if self.p['record_type'] == 'MX':
