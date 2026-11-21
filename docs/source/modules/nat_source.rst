@@ -78,7 +78,7 @@ Module alias: oxlorg.opnsense.snat
     "destination_port","string","false","\-","dp, dest_port","Leave empty to allow all, alias not supported"
     "target","string","false for deletion, else true","\-","tgt, t","NAT translation target - Packets matching this rule will be mapped to the IP address given here. Host, network or alias"
     "target_port","string","false","\-","np, nat_port",""
-    "static_port","boolean","false","false","staticnatport, static_nat_port","Preserve the source port instead of randomizing it. Required for protocols that embed the source port in their payload (e.g. some game consoles needing NAT type B/Open)"
+    "static_port","boolean","false","false","staticnatport, static_nat_port","Preserve the source port instead of randomizing it. Required for protocols that embed the source port in their payload (e.g. some game consoles needing NAT type B/Open). Needs OPNsense 26.1.5 or later, older releases do not have this setting and ignore it"
     "log","boolean","false","true","l","If rule matches should be shown in the firewall logs"
     "description","string","false","\-","desc","Description for the rule"
     "state","string","false","'present'","st","State of the rule. One of: 'present', 'absent'"

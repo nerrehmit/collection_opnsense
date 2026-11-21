@@ -182,3 +182,64 @@ def test_nat_source_automatic_mode_warns_on_absent(mocker):
 
     module.fail_json.assert_not_called()
     module.warn.assert_called_once()
+
+
+def _rule_api_26_1_4() -> dict:
+    # a rule as 'get_rule' returns it before OPNsense 26.1.5, which added 'staticnatport' (upstream issue #466)
+    return {
+        'uuid': 'rule-1', 'enabled': '1', 'nonat': '0', 'sequence': '1',
+        'interface': {'lan': {'value': 'LAN', 'selected': 0}, 'wan': {'value': 'WAN', 'selected': 1}},
+        'ipprotocol': {'inet': {'value': 'IPv4', 'selected': 1}, 'inet6': {'value': 'IPv6', 'selected': 0}},
+        'protocol': {'any': {'value': 'any', 'selected': 0}, 'TCP': {'value': 'TCP', 'selected': 1}},
+        'source_net': '198.51.100.0/24', 'source_not': '0', 'source_port': '',
+        'destination_net': '203.0.113.0/24', 'destination_not': '0', 'destination_port': '',
+        'target': 'wanip', 'target_port': '', 'log': '0', 'categories': [], 'tagged': '',
+        'description': 'ANSIBLE_TEST_SNAT',
+    }
+
+
+def _snat_26_1_4(params: dict = None) -> (SNat, dict):
+    module = MockAnsibleModule()
+    module.params.update({
+        'state': 'present', 'enabled': True, 'sequence': 1, 'no_nat': False, 'interface': 'wan',
+        'target': 'wanip', 'target_port': '', 'description': 'ANSIBLE_TEST_SNAT', 'ip_protocol': 'inet',
+        'protocol': 'TCP', 'source_invert': False, 'source_net': '198.51.100.0/24', 'source_port': '',
+        'destination_invert': False, 'destination_net': '203.0.113.0/24', 'destination_port': '',
+        'log': False, 'static_port': False, 'match_fields': ['description'],
+        **(params or {}),
+    })
+    result = {'changed': False, 'diff': {'before': {}, 'after': {}}}
+    snat = SNat(module=module, result=result)
+    snat.s = None
+    return snat, result
+
+
+def test_nat_source_reads_rule_without_staticnatport():
+    snat, _ = _snat_26_1_4()
+    simple = snat.simplify_existing(_rule_api_26_1_4())
+
+    assert 'static_port' not in simple
+    assert simple['interface'] == 'wan'
+    assert simple['no_nat'] is False
+
+
+@pytest.mark.parametrize('params, changed', [
+    ({}, False),
+    ({'static_port': True}, False),  # the field can't be compared, OPNsense before 26.1.5 has no such setting
+    ({'sequence': 2}, True),
+    ({'log': True}, True),
+])
+def test_nat_source_rule_without_staticnatport_is_idempotent(mocker, params: dict, changed: bool):
+    snat, result = _snat_26_1_4(params)
+    snat.rule = snat.simplify_existing(_rule_api_26_1_4())
+    snat.exists = True
+    mocker.patch.object(snat, '_check_mode')
+    mocker.patch.object(snat, 'find')
+    mocker.patch.object(snat, '_base_check')
+
+    snat.check()
+    snat.build_diff(data=snat.rule)
+    snat.m.check_mode = True
+    snat._base_update(enable_switch=False)
+
+    assert result['changed'] is changed
