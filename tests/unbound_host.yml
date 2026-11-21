@@ -113,6 +113,55 @@
         not opn7.changed
       when: not ansible_check_mode
 
+    - name: Disabling PTR 1
+      oxlorg.opnsense.unbound_host:
+        hostname: 'host'
+        domain: 'opnsense.test.oxlorg.net'
+        value: '192.168.0.1'
+        description: 'ANSIBLE_TEST_1_1'
+        add_ptr: false
+        reload: false  # speed
+      register: opn_ptr1
+      failed_when: >
+        opn_ptr1.failed or
+        not opn_ptr1.changed
+      when: not ansible_check_mode
+
+    - name: Disabling PTR 1 - nothing changed
+      oxlorg.opnsense.unbound_host:
+        hostname: 'host'
+        domain: 'opnsense.test.oxlorg.net'
+        value: '192.168.0.1'
+        description: 'ANSIBLE_TEST_1_1'
+        add_ptr: false
+        reload: false  # speed
+      register: opn_ptr2
+      failed_when: >
+        opn_ptr2.failed or
+        opn_ptr2.changed
+      when: not ansible_check_mode
+
+    - name: Disabling PTR 1 - stored
+      oxlorg.opnsense.list:
+      register: opn_ptr3
+      failed_when: >
+        'data' not in opn_ptr3 or
+        (opn_ptr3.data | selectattr('description', 'equalto', 'ANSIBLE_TEST_1_1') | first).add_ptr | bool
+      when: not ansible_check_mode
+
+    - name: Enabling PTR 1
+      oxlorg.opnsense.unbound_host:
+        hostname: 'host'
+        domain: 'opnsense.test.oxlorg.net'
+        value: '192.168.0.1'
+        description: 'ANSIBLE_TEST_1_1'
+        reload: false  # speed
+      register: opn_ptr4
+      failed_when: >
+        opn_ptr4.failed or
+        not opn_ptr4.changed
+      when: not ansible_check_mode
+
     - name: Adding 2
       oxlorg.opnsense.unbound_host:
         hostname: 'mx'

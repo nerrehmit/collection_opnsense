@@ -36,6 +36,7 @@ Definition
     "value","string","false for state changes, else true","\-","server, srv, mx","Value the record should hold"
     "prio","int","false","10","mxprio","Priority that is only used for MX record types"
     "description","string","false","\-","desc","Optional description for the host-override. Could be used as unique-identifier when set as only 'match_field'."
+    "add_ptr","boolean","false","true","addptr, ptr","Also create the matching PTR record (GUI: 'Add PTR record'). Only used for the record types 'A' and 'AAAA'. Needs OPNsense 26.1.3 or later, older releases do not have this setting and ignore it"
     "reload","boolean","false","true","\-", .. include:: ../_include/param_reload.rst
 
 .. include:: ../_include/param_basic.rst
