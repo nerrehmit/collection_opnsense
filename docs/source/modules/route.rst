@@ -17,14 +17,27 @@ Static Routes
 
 **Service Docs**: `Routes <https://docs.opnsense.org/manual/routes.html>`_
 
-Gateway Groups
-==============
+Gateways
+========
 
 **TESTS**: `gateway <https://github.com/O-X-L/ansible-opnsense/blob/latest/tests/gateway.yml>`_
 
 **API Docs**: `Core - routings <https://docs.opnsense.org/development/api/core/routing.html>`_
 
 **Service Docs**: `routings <https://docs.opnsense.org/manual/gateways.html>`_
+
+Gateway Groups
+==============
+
+**STATE**: testing
+
+**TESTS**: `gateway_group <https://github.com/O-X-L/ansible-opnsense/blob/latest/tests/gateway_group.yml>`_
+
+**API Docs**: `Core - routings <https://docs.opnsense.org/development/api/core/routing.html>`_
+
+**Service Docs**: `Gateway groups <https://docs.opnsense.org/manual/how-tos/multiwan.html>`_
+
+Needs OPNsense 26.7 or newer, older releases manage gateway groups outside the API.
 
 Contribution
 ************
@@ -83,6 +96,24 @@ oxlorg.opnsense.gateway
     "data_length","integer","false","0","\-","Size of ICMP packets to send."
     "match_fields","list of strings","false","['name', 'gateway']","\-","Fields that are used to match configured gateways with the running config - if any of those fields are changed, the module will think it's a new gateway, possible options: ['name', 'gateway', 'description']"
     "reload","boolean","false","true","\-", .. include:: ../_include/param_reload.rst
+
+oxlorg.opnsense.gateway_group
+=============================
+
+..  csv-table:: Definition
+    :header: "Parameter", "Type", "Required", "Default", "Aliases", "Comment"
+    :widths: 15 10 10 10 10 45
+
+    "name","string","true","\-","\-","Unique name of the gateway group. Only 'a-zA-Z0-9_-', at most 32 characters. It must not be the name of a gateway. OPNsense doesn't allow renaming a gateway group, so a new name creates a new group"
+    "tier1","list of strings","false for deletion, else at least one tier","[]","\-","Names of the gateways in tier 1, as shown in 'System - Gateways - Configuration - Name'. Lower tiers are preferred, gateways in the same tier share the load"
+    "tier2","list of strings","false","[]","\-","Names of the gateways in tier 2"
+    "tier3","list of strings","false","[]","\-","Names of the gateways in tier 3"
+    "tier4","list of strings","false","[]","\-","Names of the gateways in tier 4"
+    "tier5","list of strings","false","[]","\-","Names of the gateways in tier 5"
+    "trigger","string","false","'down'","trigger_level","When to switch to the next tier. One of: 'down' (member down), 'downloss' (packet loss), 'downlatency' (high latency), 'downlosslatency' (packet loss or high latency)"
+    "pool_options","string","false","''","poolopts","How to balance the gateways of a tier. One of: '' (default), 'round-robin', 'round-robin sticky-address'"
+    "description","string","false","''","desc","Optional description"
+    "reload","boolean","false","false","apply", .. include:: ../_include/param_reload.rst
 
 ----
 
@@ -207,3 +238,55 @@ oxlorg.opnsense.gateway
           oxlorg.opnsense.gateway:
             name: 'Test_GW'
             state: absent
+
+oxlorg.opnsense.gateway_group
+=============================
+
+.. code-block:: yaml
+
+    - hosts: firewalls
+      connection: local
+      gather_facts: false
+      module_defaults:
+        group/oxlorg.opnsense.all:
+          firewall: 'opnsense.template.opnsense.oxl.app'
+          api_credential_file: '/home/guy/.secret/opn.key'
+
+        oxlorg.opnsense.list:
+          target: 'gateway_group'
+
+      tasks:
+        - name: Failover from WAN1 to WAN2
+          oxlorg.opnsense.gateway_group:
+            name: 'WAN_FAILOVER'
+            tier1: ['WAN1_GW']
+            tier2: ['WAN2_GW']
+            trigger: 'downloss'
+            description: 'Use WAN2 when WAN1 is down or loses packets'
+            # tier3: []
+            # tier4: []
+            # tier5: []
+            # pool_options: ''
+            # reload: false
+            # state: 'present'
+
+        - name: Load balancing over WAN1 and WAN2
+          oxlorg.opnsense.gateway_group:
+            name: 'WAN_LOADBALANCE'
+            tier1: ['WAN1_GW', 'WAN2_GW']
+            pool_options: 'round-robin sticky-address'
+            reload: true
+
+        - name: Listing
+          oxlorg.opnsense.list:
+          #  target: 'gateway_group'
+          register: existing_entries
+
+        - name: Printing gateway groups
+          ansible.builtin.debug:
+            var: existing_entries.data
+
+        - name: Removing a gateway group
+          oxlorg.opnsense.gateway_group:
+            name: 'WAN_LOADBALANCE'
+            state: 'absent'

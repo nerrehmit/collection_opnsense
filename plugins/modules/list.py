@@ -41,7 +41,7 @@ TARGETS = [
     'acme_validation', 'acme_action', 'acme_certificate', 'postfix_general', 'postfix_domain', 'postfix_recipient',
     'postfix_recipientbcc', 'postfix_sender', 'postfix_senderbcc', 'postfix_sendercanonical', 'postfix_headercheck',
     'postfix_address', 'dhcp_subnet', 'dhcp_general', 'interface_gre', 'nat_one_to_one', 'nat_source', 'dhcp_option',
-    'nat_destination', 'dhcp_ddns',
+    'nat_destination', 'dhcp_ddns', 'gateway_group',
     'ipsec_manual_spd', 'hasync_general', 'snapshot', 'frr_bgp_redistribution', 'frr_ospf_redistribution',
     'frr_ospf3_redistribution', 'frr_ospf3_route_map', 'frr_ospf3_prefix_list', 'frr_ospf3_network',
     'frr_bgp_peer_group', 'user', 'group', 'privilege', 'interface_bridge', 'interface_gif', 'neighbor',
@@ -101,6 +101,10 @@ def run_module():
         elif target == 'gateway':
             from ansible_collections.oxlorg.opnsense.plugins.module_utils.main.gateway import \
                 Gw as Target_Obj
+
+        elif target == 'gateway_group':
+            from ansible_collections.oxlorg.opnsense.plugins.module_utils.main.gateway_group import \
+                GwGroup as Target_Obj
 
         elif target == 'cron':
             from ansible_collections.oxlorg.opnsense.plugins.module_utils.main.cron import \

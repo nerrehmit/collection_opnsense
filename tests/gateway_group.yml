@@ -1,0 +1,180 @@
+---
+
+# NOTE:
+#   Needs OPNsense 26.7 or newer.
+#   Expects the gateways 'LAN_GW' and 'TEST-GW' to exist (see tests/README.md).
+
+- name: Testing Gateway Groups
+  hosts: localhost
+  gather_facts: no
+  module_defaults:
+    group/oxlorg.opnsense.all:
+      firewall: "{{ lookup('ansible.builtin.env', 'TEST_FIREWALL') }}"
+      api_credential_file: "{{ lookup('ansible.builtin.env', 'TEST_API_KEY') }}"
+      ssl_verify: false
+
+    oxlorg.opnsense.list:
+      target: 'gateway_group'
+
+  environment:
+    HTTPS_PROXY: "{{ lookup('ansible.builtin.env', 'TEST_PROXY') | default('') }}"
+
+  tasks:
+    - name: Listing
+      oxlorg.opnsense.list:
+      register: opn1
+      failed_when: >
+        'data' not in opn1 or
+        opn1.data | length != 0
+
+    - name: Removing - does not exist
+      oxlorg.opnsense.gateway_group:
+        name: 'ANSIBLE_TEST_GRP_1'
+        state: 'absent'
+      register: opn2
+      failed_when: >
+        opn2.failed or
+        opn2.changed
+
+    - name: Adding 1 - failing because no tier has a gateway
+      oxlorg.opnsense.gateway_group:
+        name: 'ANSIBLE_TEST_GRP_1'
+      register: opn_fail1
+      failed_when: not opn_fail1.failed
+
+    - name: Adding 1 - failing because of an invalid name
+      oxlorg.opnsense.gateway_group:
+        name: 'ANSIBLE TEST GRP 1'
+        tier1: ['LAN_GW']
+      register: opn_fail2
+      failed_when: not opn_fail2.failed
+
+    - name: Adding 1 - failing because the gateway does not exist
+      oxlorg.opnsense.gateway_group:
+        name: 'ANSIBLE_TEST_GRP_1'
+        tier1: ['ANSIBLE_TEST_DOES_NOT_EXIST']
+      register: opn_fail3
+      failed_when: not opn_fail3.failed
+      when: not ansible_check_mode  # validated by the API
+
+    - name: Adding 1
+      oxlorg.opnsense.gateway_group:
+        name: 'ANSIBLE_TEST_GRP_1'
+        tier1: ['LAN_GW']
+        tier2: ['TEST-GW']
+        description: 'ANSIBLE_TEST failover'
+      register: opn3
+      failed_when: >
+        opn3.failed or
+        not opn3.changed
+
+    - name: Adding 1 - nothing changed
+      oxlorg.opnsense.gateway_group:
+        name: 'ANSIBLE_TEST_GRP_1'
+        tier1: ['LAN_GW']
+        tier2: ['TEST-GW']
+        description: 'ANSIBLE_TEST failover'
+      register: opn4
+      failed_when: >
+        opn4.failed or
+        opn4.changed
+      when: not ansible_check_mode
+
+    - name: Changing 1
+      oxlorg.opnsense.gateway_group:
+        name: 'ANSIBLE_TEST_GRP_1'
+        tier1: ['TEST-GW', 'LAN_GW']
+        trigger: 'downlosslatency'
+        pool_options: 'round-robin sticky-address'
+        description: 'ANSIBLE_TEST load balancing'
+      register: opn5
+      failed_when: >
+        opn5.failed or
+        not opn5.changed
+      when: not ansible_check_mode
+
+    - name: Changing 1 - nothing changed
+      oxlorg.opnsense.gateway_group:
+        name: 'ANSIBLE_TEST_GRP_1'
+        tier1: ['LAN_GW', 'TEST-GW']
+        trigger: 'downlosslatency'
+        pool_options: 'round-robin sticky-address'
+        description: 'ANSIBLE_TEST load balancing'
+      register: opn6
+      failed_when: >
+        opn6.failed or
+        opn6.changed
+      when: not ansible_check_mode
+
+    - name: Adding 2 - in tier 5 only, with reload
+      oxlorg.opnsense.gateway_group:
+        name: 'ANSIBLE_TEST_GRP_2'
+        tier5: ['TEST-GW']
+        trigger: 'downloss'
+        reload: true
+      register: opn7
+      failed_when: >
+        opn7.failed or
+        not opn7.changed
+
+    - name: Adding 2 - nothing changed
+      oxlorg.opnsense.gateway_group:
+        name: 'ANSIBLE_TEST_GRP_2'
+        tier5: ['TEST-GW']
+        trigger: 'downloss'
+      register: opn8
+      failed_when: >
+        opn8.failed or
+        opn8.changed
+      when: not ansible_check_mode
+
+    - name: Listing
+      oxlorg.opnsense.list:
+      register: opn9
+      failed_when: >
+        'data' not in opn9 or
+        opn9.data | length != 2 or
+        (opn9.data | selectattr('name', 'equalto', 'ANSIBLE_TEST_GRP_1') | first).tier1 != ['LAN_GW', 'TEST-GW'] or
+        (opn9.data | selectattr('name', 'equalto', 'ANSIBLE_TEST_GRP_1') | first).tier2 != [] or
+        (opn9.data | selectattr('name', 'equalto', 'ANSIBLE_TEST_GRP_1') | first).pool_options != 'round-robin sticky-address' or
+        (opn9.data | selectattr('name', 'equalto', 'ANSIBLE_TEST_GRP_2') | first).tier5 != ['TEST-GW'] or
+        (opn9.data | selectattr('name', 'equalto', 'ANSIBLE_TEST_GRP_2') | first).trigger != 'downloss'
+      when: not ansible_check_mode
+
+    - name: Removing 2
+      oxlorg.opnsense.gateway_group:
+        name: 'ANSIBLE_TEST_GRP_2'
+        state: 'absent'
+      register: opn10
+      failed_when: >
+        opn10.failed or
+        not opn10.changed
+      when: not ansible_check_mode
+
+    - name: Removing 2 - nothing changed
+      oxlorg.opnsense.gateway_group:
+        name: 'ANSIBLE_TEST_GRP_2'
+        state: 'absent'
+      register: opn11
+      failed_when: >
+        opn11.failed or
+        opn11.changed
+      when: not ansible_check_mode
+
+    - name: Cleanup
+      oxlorg.opnsense.gateway_group:
+        name: "{{ item }}"
+        state: 'absent'
+        reload: true
+      loop:
+        - 'ANSIBLE_TEST_GRP_1'
+        - 'ANSIBLE_TEST_GRP_2'
+      when: not ansible_check_mode
+
+    - name: Listing
+      oxlorg.opnsense.list:
+      register: opn12
+      failed_when: >
+        'data' not in opn12 or
+        opn12.data | length != 0
+      when: not ansible_check_mode
