@@ -16,7 +16,7 @@ ALIAS_MOD_ARGS = dict(
     ),
     type=dict(type='str', required=False, default='host', aliases=['t'], choices=[
         'host', 'network', 'port', 'url', 'urltable', 'geoip', 'networkgroup',
-        'mac', 'dynipv6host', 'internal', 'external', 'urljson',
+        'mac', 'dynipv6host', 'internal', 'external', 'urljson', 'asn',
     ]),
     updatefreq_days=dict(
         type='str', default='', required=False,
