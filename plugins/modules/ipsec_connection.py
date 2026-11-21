@@ -96,7 +96,8 @@ def run_module():
             choices=list(Connection.FIELDS_VALUE_MAPPING['version'].keys()),
             description='IKE major version to use for connection. 1 uses IKEv1 aka ISAKMP, 2 uses IKEv2. A connection '
                         'using IKEv1+IKEv2 accepts both IKEv1 and IKEv2 as a responder and initiates the connection '
-                        'actively with IKEv2',
+                        'actively with IKEv2. OPNsense 26.7.8 deprecated IKEv1, including the IKEv1 responder side '
+                        "of 'ikev1+2'",
         ),
         mobike=dict(
             type='bool', required=False, default=True, aliases=['mob'],

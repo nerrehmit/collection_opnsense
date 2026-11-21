@@ -55,7 +55,7 @@ Module alias: oxlorg.opnsense.ipsec_tunnel
     "proposals","list","false","['default']","props","A proposal is a set of algorithms. For non-AEAD algorithms this includes IKE an encryption algorithm, an integrity algorithm, a pseudo random function (PRF) and a Diffie-Hellman key exchange group. For AEAD algorithms, instead of encryption and integrity algorithms a combined algorithm is used. With IKEv2 multiple algorithms of the same kind can be specified in a single proposal, from which one gets selected. For IKEv1 only one algorithm per kind is allowed per proposal, more algorithms get implicitly stripped. Use multiple proposals to offer different algorithm combinations with IKEv1. Algorithm keywords get separated using dashes. Multiple proposals may be separated by commas. The special value default adds a default proposal of supported algorithms considered safe and is usually a good choice for interoperability."
     "unique","string","false","no","\-","One of: 'no', 'never', 'keep', 'replace'; Connection uniqueness policy to enforce. To avoid multiple connections from the same user, a uniqueness policy can be enforced."
     "aggressive","boolean","false","false","aggr","Enables IKEv1 Aggressive Mode instead of IKEv1 Main Mode with Identity Protection. Aggressive Mode is considered less secure because the ID and HASH payloads are exchanged unprotected. This allows a passive attacker to snoop peer identities and even worse, start dictionary attacks on the Preshared Key"
-    "version","string","false","ike","vers, v","One of: 'ike', 'ikev1', 'ikev2'; IKE major version to use for connection. 1 uses IKEv1 aka ISAKMP, 2 uses IKEv2. A connection using IKEv1+IKEv2 accepts both IKEv1 and IKEv2 as a responder and initiates the connection actively with IKEv2"
+    "version","string","false","ikev1+2","vers, v","One of: 'ikev1+2', 'ikev1', 'ikev2'; IKE major version to use for connection. 1 uses IKEv1 aka ISAKMP, 2 uses IKEv2. A connection using IKEv1+IKEv2 accepts both IKEv1 and IKEv2 as a responder and initiates the connection actively with IKEv2. OPNsense 26.7.8 deprecated IKEv1, including the IKEv1 responder side of 'ikev1+2'"
     "mobike","boolean","false","true","mob","Enables MOBIKE on IKEv2 connections. MOBIKE is enabled by default on IKEv2 connections and allows mobility of clients and multi-homing on servers by migrating active IPsec tunnels. Usually keeping MOBIKE enabled is unproblematic, as it is not used if the peer does not indicate support for it. However, due to the design of MOBIKE, IKEv2 always floats to UDP port 4500 starting from the second exchange. Some implementations don’t like this behavior, hence it can be disabled"
     "encapsulation","boolean","false","false","udp_encapsulation, encap","To enforce UDP encapsulation of ESP packets, the IKE daemon can manipulate the NAT detection payloads. This makes the peer believe that a NAT situation exist on the transmission path, forcing it to encapsulate ESP packets in UDP. Usually this is not required but it can help to work around connectivity issues with too restrictive intermediary firewalls that block ESP packets"
     "reauth_seconds","integer","false","\-","reauth, reauth_sec, reauth_time","Time to schedule IKE reauthentication. IKE reauthentication recreates the IKE/ISAKMP SA from scratch and re-evaluates the credentials. In asymmetric configurations (with EAP or configuration payloads) it might not be possible to actively reauthenticate as responder. The IKEv2 reauthentication lifetime negotiation can instruct the client to perform reauthentication. Reauthentication is disabled by default (0). Enabling it usually may lead to small connection interruptions as strongSwan uses a break-before-make policy with IKEv2 by default"
@@ -316,7 +316,7 @@ oxlorg.opnsense.ipsec_connection
             # proposals: ['default']
             # unique: false
             # aggressive: false
-            # version: ike
+            # version: 'ikev1+2'
             # mobike: true
             # encapsulation: false
             # reauth_seconds:
@@ -338,7 +338,7 @@ oxlorg.opnsense.ipsec_connection
         - name: Changing IPSec Site A
           oxlorg.opnsense.ipsec_connection:
             name: IPSec Example Siet2Site
-            version: ike2
+            version: 'ikev2'
             local_addresses: 10.10.1.1
             remote_addresses: 10.10.1.2
 
