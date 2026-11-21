@@ -250,8 +250,20 @@ def run_module():
         dns_porkbun_key=dict(type='str', required=False),
         dns_porkbun_secret=dict(type='str', required=False, no_log=True),
         dns_sl_key=dict(type='str', required=False, no_log=True),
-        dns_selfhost_user=dict(type='str', required=False),
-        dns_selfhost_password=dict(type='str', required=False, no_log=True),
+        dns_selfhost_apikey=dict(
+            type='str', required=False, no_log=True,
+            description='API key for Selfhost. Needs os-acme-client 4.18 (OPNsense 26.7.9) or later',
+        ),
+        dns_selfhost_user=dict(
+            type='str', required=False,
+            description="Only for os-acme-client before 4.18 (OPNsense 26.7.8 and older), "
+                        "later versions use 'dns_selfhost_apikey'",
+        ),
+        dns_selfhost_password=dict(
+            type='str', required=False, no_log=True,
+            description="Only for os-acme-client before 4.18 (OPNsense 26.7.8 and older), "
+                        "later versions use 'dns_selfhost_apikey'",
+        ),
         dns_selfhost_map=dict(type='str', required=False),
         dns_servercow_username=dict(type='str', required=False),
         dns_servercow_password=dict(type='str', required=False, no_log=True),
